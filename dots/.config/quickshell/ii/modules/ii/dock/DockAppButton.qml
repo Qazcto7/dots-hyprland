@@ -6,6 +6,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
+import Quickshell.Hyprland
 
 DockButton {
     id: root
@@ -135,7 +136,19 @@ DockButton {
             return;
         }
         lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
-        appToplevel.toplevels[lastFocused].activate()
+        const toplevel = appToplevel.toplevels[lastFocused];
+
+        // Minimized windows live on the hidden "special:minimized" workspace. Bring them back to the
+        // current workspace directly instead of relying on the activation request.
+        const address = toplevel.HyprlandToplevel?.address;
+        const client = address ? HyprlandData.windowByAddress[`0x${address}`] : null;
+        if (client?.workspace?.name === "special:minimized") {
+            const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "address:0x${address}" })`);
+            Hyprland.dispatch(`hl.dsp.focus({ window = "address:0x${address}" })`);
+            return;
+        }
+        toplevel.activate()
     }
 
     middleClickAction: () => {
