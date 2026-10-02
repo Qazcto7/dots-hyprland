@@ -57,7 +57,7 @@ hl.plugin.hyprbars.add_button({
     fg_color = button_fg,
     size = 24,
     icon = "󰅀", -- nf-md-chevron_down
-    action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })']],
+    action = [[sleep 0.3; hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })']],
 })
 
 -- Apps that already draw their own title bar buttons (client-side decorations).
