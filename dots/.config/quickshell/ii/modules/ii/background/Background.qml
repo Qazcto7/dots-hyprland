@@ -78,6 +78,8 @@ Variants {
         WlrLayershell.layer: (GlobalStates.screenLocked && !scaleAnim.running) ? WlrLayer.Overlay : WlrLayer.Bottom
         // WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "quickshell:background"
+        // Desktop icons: clicking the desktop gives it the keyboard (Delete, F2, Enter, Esc)
+        WlrLayershell.keyboardFocus: (desktopIconsLoader.item && !GlobalStates.screenLocked) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         anchors {
             top: true
             bottom: true

@@ -145,7 +145,9 @@ Item {
                 name: name,
                 path: FileUtils.trimFileProtocol(folderModel.get(i, "filePath")),
                 isDir: folderModel.get(i, "fileIsDir"),
-                suffix: (folderModel.get(i, "fileSuffix") ?? "").toLowerCase()
+                // FolderListModel's fileSuffix is the *complete* suffix ("hgl.desktop" for
+                // "com.heroicgameslauncher.hgl.desktop"), so take the last extension ourselves
+                suffix: name.lastIndexOf(".") > 0 ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : ""
             };
             const saved = root.positions[name];
             if (saved && saved.col < root.columns && saved.row < root.rows && !occupied[`${saved.col},${saved.row}`]) {
@@ -258,11 +260,86 @@ Item {
         Quickshell.execDetached(["bash", "-c", "env XDG_CURRENT_DESKTOP=KDE systemsettings"]);
     }
 
+    // ---------- Keyboard (the background layer takes keyboard focus when clicked) ----------
+    readonly property var selectedItem: root.items.find(i => i.name === root.selectedName) ?? null
+    focus: true
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Escape) {
+            root.selectedName = "";
+        } else if (!root.selectedItem) {
+            return;
+        } else if (event.key === Qt.Key_Delete) {
+            root.trash(root.selectedItem);
+            root.selectedName = "";
+        } else if (event.key === Qt.Key_F2) {
+            root.rename(root.selectedItem);
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            root.open(root.selectedItem);
+        } else {
+            return;
+        }
+        event.accepted = true;
+    }
+
+    // ---------- Drop files from a file manager (Dolphin...) ----------
+    // Always copies (never moves, so nothing disappears from its original place by accident).
+    // Dropped files land where they were dropped.
+    DropArea {
+        id: dropArea
+        anchors.fill: parent
+        onEntered: drag => {
+            if (drag.hasUrls) drag.accept(Qt.CopyAction);
+        }
+        onDropped: drop => {
+            if (!drop.hasUrls || root.desktopDir === "")
+                return;
+            const paths = drop.urls
+                .map(u => decodeURIComponent(u.toString()))
+                .filter(u => u.startsWith("file://"))
+                .map(u => u.slice("file://".length))
+                .filter(p => p.substring(0, p.lastIndexOf("/")) !== root.desktopDir); // already on the desktop
+            if (paths.length === 0)
+                return;
+            root.placeDroppedFiles(paths.map(p => p.substring(p.lastIndexOf("/") + 1)), drop.x, drop.y);
+            Quickshell.execDetached(["bash", "-c", 'dir="$1"; shift; cp -rn -- "$@" "$dir"/', "drop", root.desktopDir, ...paths]);
+            drop.accept(Qt.CopyAction);
+        }
+    }
+    Rectangle { // drop highlight
+        anchors.fill: parent
+        anchors.margins: 6
+        visible: dropArea.containsDrag
+        color: "transparent"
+        radius: Appearance.rounding.normal
+        border.width: 2
+        border.color: Appearance.colors.colPrimary
+    }
+
+    // Reserve cells at the drop point for files that are about to appear
+    function placeDroppedFiles(names, x, y) {
+        const taken = root.blockedCells();
+        for (const i of root.items)
+            taken[`${i.col},${i.row}`] = true;
+        let col = Math.max(0, Math.min(root.columns - 1, Math.round((x - root.sideMargin - root.cellWidth / 2) / root.cellWidth)));
+        let row = Math.max(0, Math.min(root.rows - 1, Math.round((y - root.topMargin - root.cellHeight / 2) / root.cellHeight)));
+        const newPositions = Object.assign({}, root.positions);
+        for (const name of names) {
+            if (root.items.some(i => i.name === name))
+                continue; // name already exists on the desktop; cp/mv -n won't overwrite it
+            const cell = root.nearestFreeCell(col, row, taken);
+            newPositions[name] = cell;
+            taken[`${cell.col},${cell.row}`] = true;
+        }
+        root.positions = newPositions;
+        root.savePositions();
+    }
+
     // ---------- Empty desktop area ----------
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onPressed: event => {
+            root.forceActiveFocus();
             root.selectedName = "";
             if (event.button === Qt.RightButton)
                 root.desktopMenuRequested(event.x, event.y);

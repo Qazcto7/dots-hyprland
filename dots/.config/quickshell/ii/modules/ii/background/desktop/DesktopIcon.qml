@@ -137,6 +137,7 @@ Item {
         cursorShape: drag.active ? Qt.ClosedHandCursor : Qt.ArrowCursor
 
         onPressed: event => {
+            root.desktop.forceActiveFocus();
             root.desktop.selectedName = root.item.name;
             if (event.button === Qt.RightButton) {
                 const p = mapToItem(root.desktop, event.x, event.y);
