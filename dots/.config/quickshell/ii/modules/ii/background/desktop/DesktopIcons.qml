@@ -32,6 +32,54 @@ Item {
     property var positions: ({}) // fileName -> { col, row }
     property var items: []       // [{ name, path, isDir, suffix, col, row }]
 
+    // Background widgets (clock, weather) that icons must not be placed under
+    property var obstacleItems: []
+    // Changes whenever an obstacle moves/resizes/shows/hides, to trigger a relayout
+    readonly property string obstacleKey: obstacleItems.map(i => i ? `${i.x},${i.y},${i.width},${i.height},${i.visible}` : "").join(";")
+    onObstacleKeyChanged: obstacleTimer.restart()
+    Timer {
+        id: obstacleTimer
+        interval: 400 // widgets animate into place; wait for them to settle
+        onTriggered: root.relayout()
+    }
+
+    // Cells ("col,row") covered by an obstacle
+    function blockedCells() {
+        const blocked = {};
+        for (const obstacle of root.obstacleItems) {
+            if (!obstacle || !obstacle.visible || obstacle.width <= 0 || obstacle.height <= 0)
+                continue;
+            const r = obstacle.mapToItem(root, 0, 0, obstacle.width, obstacle.height);
+            for (let col = 0; col < root.columns; col++) {
+                for (let row = 0; row < root.rows; row++) {
+                    const cx = root.cellX(col), cy = root.cellY(row);
+                    const overlaps = cx < r.x + r.width && cx + root.cellWidth > r.x && cy < r.y + r.height && cy + root.cellHeight > r.y;
+                    if (overlaps)
+                        blocked[`${col},${row}`] = true;
+                }
+            }
+        }
+        return blocked;
+    }
+
+    // Nearest cell to (col,row) that is neither blocked nor taken
+    function nearestFreeCell(col, row, taken) {
+        let best = null;
+        let bestDistance = Infinity;
+        for (let c = 0; c < root.columns; c++) {
+            for (let r = 0; r < root.rows; r++) {
+                if (taken[`${c},${r}`])
+                    continue;
+                const d = (c - col) * (c - col) + (r - row) * (r - row);
+                if (d < bestDistance) {
+                    bestDistance = d;
+                    best = { col: c, row: r };
+                }
+            }
+        }
+        return best ?? { col: col, row: row };
+    }
+
     // Menu requests, handled by DesktopContextMenu
     signal itemMenuRequested(var item, real x, real y)
     signal desktopMenuRequested(real x, real y)
@@ -88,7 +136,7 @@ Item {
             root.items = [];
             return;
         }
-        const occupied = {};
+        const occupied = root.blockedCells(); // blocked cells count as occupied
         const result = [];
         const pending = [];
         for (let i = 0; i < folderModel.count; i++) {
@@ -111,8 +159,9 @@ Item {
         }
         // Remaining icons fill free cells column by column, like Plasma
         let cell = 0;
+        const totalCells = root.columns * root.rows;
         for (const item of pending) {
-            while (occupied[`${Math.floor(cell / root.rows)},${cell % root.rows}`])
+            while (cell < totalCells && occupied[`${Math.floor(cell / root.rows)},${cell % root.rows}`])
                 cell++;
             item.col = Math.floor(cell / root.rows);
             item.row = cell % root.rows;
@@ -127,8 +176,15 @@ Item {
 
     // Drop an icon at pixel position; snaps to the nearest cell, swaps with an icon already there
     function moveItemTo(name, x, y) {
-        const col = Math.max(0, Math.min(root.columns - 1, Math.round((x - root.sideMargin) / root.cellWidth)));
-        const row = Math.max(0, Math.min(root.rows - 1, Math.round((y - root.topMargin) / root.cellHeight)));
+        let col = Math.max(0, Math.min(root.columns - 1, Math.round((x - root.sideMargin) / root.cellWidth)));
+        let row = Math.max(0, Math.min(root.rows - 1, Math.round((y - root.topMargin) / root.cellHeight)));
+        // Dropped under a widget: use the nearest cell that is not under one
+        const blocked = root.blockedCells();
+        if (blocked[`${col},${row}`]) {
+            const free = root.nearestFreeCell(col, row, blocked);
+            col = free.col;
+            row = free.row;
+        }
         const moving = root.items.find(i => i.name === name);
         const other = root.items.find(i => i.col === col && i.row === row && i.name !== name);
         const newPositions = Object.assign({}, root.positions);

@@ -232,7 +232,10 @@ Variants {
                 id: desktopIconsLoader
                 anchors.fill: parent
                 active: parent.showDesktopIcons
-                sourceComponent: DesktopIcons {}
+                sourceComponent: DesktopIcons {
+                    // Icons never go under these background widgets
+                    obstacleItems: [clockWidgetLoader.item, weatherWidgetLoader.item]
+                }
             }
 
             WidgetCanvas {
@@ -269,6 +272,7 @@ Variants {
                 }
 
                 FadeLoader {
+                    id: weatherWidgetLoader
                     shown: Config.options.background.widgets.weather.enable
                     sourceComponent: WeatherWidget {
                         screenWidth: bgRoot.screen.width
@@ -280,6 +284,7 @@ Variants {
                 }
 
                 FadeLoader {
+                    id: clockWidgetLoader
                     shown: Config.options.background.widgets.clock.enable
                     sourceComponent: ClockWidget {
                         screenWidth: bgRoot.screen.width
