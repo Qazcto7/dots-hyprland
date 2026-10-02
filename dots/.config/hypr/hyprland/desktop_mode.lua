@@ -51,27 +51,14 @@ end
 -- Plasma-like maximize for floating windows: the window is resized to fill the free area
 -- (between bar and dock) and stays a normal floating window, so other windows on top of it
 -- still get mouse focus. Hyprland's own "maximized" mode is a fullscreen state that blocks
--- focus-follows-mouse for every other window. Calling it again restores the previous geometry.
--- Used by the title bar's maximize button / double-click (hyprctl eval 'desktop_toggle_maximize()').
+-- focus-follows-mouse for every other window. Doing it again restores the previous geometry.
+-- Used by the title bar's maximize button / double-click (hyprctl eval 'desktop_toggle_maximize()'),
+-- and in floating mode every Hyprland maximize (SUPER + D, an app's own maximize button) is
+-- converted to this one.
+local FS_MAXIMIZED = 1
 local maximizedGeometry = {}
 
-function desktop_toggle_maximize()
-    local win = hl.get_active_window()
-    if not win then return end
-
-    -- Leave Hyprland fullscreen/maximized state first (e.g. windows maximized before this existed)
-    if (win.fullscreen or 0) ~= 0 then
-        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset", window = win }))
-        hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "unset", window = win }))
-        return
-    end
-
-    -- Tiled windows: use Hyprland's maximize as before
-    if not win.floating then
-        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle", window = win }))
-        return
-    end
-
+local function geometricMaximizeToggle(win)
     local key = win.address
     local saved = maximizedGeometry[key]
     if saved then
@@ -104,4 +91,38 @@ function desktop_toggle_maximize()
         y = math.floor(areaH - 2 * (gap + border) - bar),
         window = win,
     }))
+end
+
+function desktop_toggle_maximize(win)
+    win = win or hl.get_active_window()
+    if not win then return end
+    local fs = win.fullscreen or 0
+
+    -- Real fullscreen (SUPER + F): just leave it
+    if fs ~= 0 and fs ~= FS_MAXIMIZED then
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "unset", window = win }))
+        return
+    end
+
+    -- Tiled windows, or floating mode off: Hyprland's maximize as before
+    if not (mode.floating and win.floating) then
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle", window = win }))
+        return
+    end
+
+    if fs == FS_MAXIMIZED then
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset", window = win }))
+    end
+    geometricMaximizeToggle(win)
+end
+
+if mode.floating then
+    hl.on("window.fullscreen", function(win)
+        if not win or not win.floating or win.fullscreen ~= FS_MAXIMIZED then return end
+        -- Let Hyprland finish its own fullscreen change before undoing it
+        hl.timer(function()
+            if not win.address or win.fullscreen ~= FS_MAXIMIZED then return end
+            desktop_toggle_maximize(win)
+        end, { timeout = 30, type = "oneshot" })
+    end)
 end
