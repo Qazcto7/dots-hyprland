@@ -18,14 +18,14 @@ Item {
 
     component BottomButton: RippleButton {
         id: bottomButton
-        property string icon
+        property string symbol
         property string tooltip
         implicitWidth: 40
         implicitHeight: 40
         buttonRadius: Appearance.rounding.full
         contentItem: MaterialSymbol {
             horizontalAlignment: Text.AlignHCenter
-            text: bottomButton.icon
+            text: bottomButton.symbol
             iconSize: Appearance.font.pixelSize.larger
             color: Appearance.colors.colOnLayer0
         }
@@ -269,7 +269,7 @@ Item {
             }
 
             BottomButton {
-                icon: "settings"
+                symbol: "settings"
                 tooltip: Translation.tr("System Settings")
                 onClicked: {
                     Quickshell.execDetached(["bash", "-c", "env XDG_CURRENT_DESKTOP=KDE systemsettings"]);
@@ -277,7 +277,7 @@ Item {
                 }
             }
             BottomButton {
-                icon: "lock"
+                symbol: "lock"
                 tooltip: Translation.tr("Lock")
                 onClicked: {
                     root.closed();
@@ -285,7 +285,7 @@ Item {
                 }
             }
             BottomButton {
-                icon: "power_settings_new"
+                symbol: "power_settings_new"
                 tooltip: Translation.tr("Power / Session")
                 onClicked: {
                     root.closed();
