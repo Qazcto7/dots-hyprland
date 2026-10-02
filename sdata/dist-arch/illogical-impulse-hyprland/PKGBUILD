@@ -1,7 +1,7 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-hyprland
 pkgver=1.0
-pkgrel=6
+pkgrel=7
 pkgdesc='Illogical Impulse Hyprland relatated packages'
 arch=(any)
 license=(None)
@@ -9,4 +9,12 @@ depends=(
   "hyprland>=0.56.2"
   hyprsunset
   wl-clipboard
+  # hyprpm builds the hyprbars plugin (window title bars, see hyprland/titlebars.lua)
+  hyprpm
+  cmake
+  meson
+  cpio
+  pkgconf
+  git
+  gcc
 )

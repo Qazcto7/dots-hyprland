@@ -3,6 +3,7 @@ import QtQuick
 import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs
 import qs.services
 import qs.modules.common
@@ -49,6 +50,10 @@ Item {
     property real groupDragDY: 0
     property var positions: ({}) // fileName -> { col, row }
     property var items: []       // [{ name, path, isDir, suffix, col, row }]
+    // The icon Repeater is driven by file names (strings compare by value), so existing icons
+    // are kept and just move (animated) instead of being destroyed and recreated on every change.
+    property var itemByName: ({})
+    readonly property var itemNames: root.items.map(i => i.name)
 
     // Background widgets (clock, weather) that icons must not be placed under
     property var obstacleItems: []
@@ -180,14 +185,33 @@ Item {
         // Remaining icons fill free cells column by column, like Plasma
         let cell = 0;
         const totalCells = root.columns * root.rows;
+        const blocked = root.blockedCells();
         for (const item of pending) {
             while (cell < totalCells && occupied[`${Math.floor(cell / root.rows)},${cell % root.rows}`])
                 cell++;
-            item.col = Math.floor(cell / root.rows);
-            item.row = cell % root.rows;
+            if (cell < totalCells) {
+                item.col = Math.floor(cell / root.rows);
+                item.row = cell % root.rows;
+            } else {
+                // Grid is full. Prefer a cell that is only "occupied" because a widget covers it,
+                // otherwise stack on the last cell so the icon at least stays on screen.
+                const spare = Object.keys(blocked).find(key => !result.some(i => `${i.col},${i.row}` === key));
+                if (spare) {
+                    const [c, r] = spare.split(",").map(Number);
+                    item.col = c;
+                    item.row = r;
+                } else {
+                    item.col = root.columns - 1;
+                    item.row = root.rows - 1;
+                }
+            }
             occupied[`${item.col},${item.row}`] = true;
             result.push(item);
         }
+        const byName = {};
+        for (const item of result)
+            byName[item.name] = item;
+        root.itemByName = byName;
         root.items = result;
     }
 
@@ -259,6 +283,8 @@ Item {
 
     // ---------- Actions ----------
     // Text prompt with kdialog (KDE) or zenity; prints the answer, empty on cancel
+    // Yes/no question; returns success only on "yes". Without kdialog/zenity it says no.
+    readonly property string askYesNoFn: 'askyn() { if command -v kdialog >/dev/null; then kdialog --title "$1" --warningyesno "$2"; elif command -v zenity >/dev/null; then zenity --question --title "$1" --text "$2"; else return 1; fi; }'
     readonly property string askFn: 'ask() { if command -v kdialog >/dev/null; then kdialog --title "$1" --inputbox "$2" "$3"; elif command -v zenity >/dev/null; then zenity --entry --title "$1" --text "$2" --entry-text "$3"; fi; }'
 
     function open(item) {
@@ -269,7 +295,12 @@ Item {
                 entry.execute();
                 return;
             }
-            Quickshell.execDetached(["bash", "-c", 'gio launch "$1" || kioclient exec "$1" || xdg-open "$1"', "open", item.path]);
+            // Launchers that are not installed apps only run if they are executable (trusted), like
+            // Plasma/GNOME. Otherwise ask first; on "yes" the file is marked executable and started.
+            Quickshell.execDetached(["bash", "-c", root.askYesNoFn + '; run() { gio launch "$1" || kioclient exec "$1"; }; '
+                + 'if [ -x "$1" ]; then run "$1"; elif askyn "$2" "$3"; then chmod u+x -- "$1" && run "$1"; fi',
+                "open", item.path, Translation.tr("Untrusted launcher"),
+                Translation.tr("This launcher is not marked as trusted (executable). Only run it if you trust where it came from.\n\nRun it and mark it as trusted?")]);
             return;
         }
         Quickshell.execDetached(["xdg-open", item.path]);
@@ -314,7 +345,16 @@ Item {
         Quickshell.execDetached(["bash", "-c", "env XDG_CURRENT_DESKTOP=KDE systemsettings"]);
     }
 
-    // ---------- Keyboard (the background layer takes keyboard focus when clicked) ----------
+    // ---------- Keyboard (the background layer takes keyboard focus only while icons are selected) ----------
+    // A selection never outlives working in a window: as soon as a window gets focus it is cleared,
+    // so Delete/Enter can't act on an old selection later.
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "activewindowv2" && event.data !== "" && event.data !== ",")
+                root.clearSelection();
+        }
+    }
     focus: true
     Keys.onPressed: event => {
         const selection = root.selectedItems;
@@ -452,15 +492,18 @@ Item {
 
     // ---------- Icons ----------
     Repeater {
-        model: root.items
+        model: ScriptModel {
+            values: root.itemNames
+        }
         delegate: DesktopIcon {
-            required property var modelData
-            item: modelData
+            required property string modelData
+            // Placeholder only for the instant between a file disappearing and its icon being removed
+            item: root.itemByName[modelData] ?? ({ name: modelData, path: "", isDir: false, suffix: "", col: 0, row: 0 })
             desktop: root
             width: root.cellWidth
             height: root.cellHeight
-            homeX: root.cellX(modelData.col)
-            homeY: root.cellY(modelData.row)
+            homeX: root.cellX(item.col)
+            homeY: root.cellY(item.row)
         }
     }
 }
