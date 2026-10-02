@@ -151,7 +151,16 @@ Scope { // Scope
                             DockSeparator {}
                             DockButton {
                                 Layout.fillHeight: true
-                                onClicked: GlobalStates.overviewOpen = !GlobalStates.overviewOpen
+                                onClicked: {
+                                    if (!(Config.options?.startMenu.enable ?? false)) {
+                                        GlobalStates.overviewOpen = !GlobalStates.overviewOpen;
+                                        return;
+                                    }
+                                    // The start menu's focus grab already closed it when this button was pressed
+                                    if (!GlobalStates.startMenuOpen && Date.now() - GlobalStates.startMenuLastClosed < 300)
+                                        return;
+                                    GlobalStates.startMenuOpen = !GlobalStates.startMenuOpen;
+                                }
                                 topInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 bottomInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                                 contentItem: MaterialSymbol {

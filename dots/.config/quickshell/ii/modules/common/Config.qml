@@ -328,6 +328,11 @@ Singleton {
                 property bool kdeServices: true // Start kded6, SUPER+CTRL+I opens KDE System Settings
             }
 
+            property JsonObject startMenu: JsonObject {
+                property bool enable: true // Plasma-like start menu on the dock's app button / ALT+F1
+                property list<string> favorites: ["firefox", "org.kde.dolphin", "kitty", "systemsettings"]
+            }
+
             property JsonObject dock: JsonObject {
                 property bool enable: true
                 property bool monochromeIcons: false

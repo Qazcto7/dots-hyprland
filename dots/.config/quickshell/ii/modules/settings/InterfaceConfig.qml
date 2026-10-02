@@ -104,6 +104,17 @@ ContentPage {
         title: Translation.tr("Desktop mode")
 
         ConfigSwitch {
+            buttonIcon: "apps"
+            text: Translation.tr("Start menu (like KDE Plasma)")
+            checked: Config.options.startMenu.enable
+            onCheckedChanged: {
+                Config.options.startMenu.enable = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("The dock's app button and Alt+F1 open a Plasma-like start menu. Turn off to use the end-4 overview instead.")
+            }
+        }
+        ConfigSwitch {
             buttonIcon: "select_window"
             text: Translation.tr("Floating windows (like KDE Plasma)")
             checked: Config.options.desktopMode.floatingWindows
