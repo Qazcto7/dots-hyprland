@@ -27,6 +27,9 @@ Singleton {
     // True if a fullscreen window is shown on the monitor with this name
     // (on its active workspace or on a special workspace open on it)
     function hasFullscreenOn(monitorName) {
+        // The Wayland toplevel state updates instantly, the hyprctl data below only after a query;
+        // don't let a stale query keep things (like the dock) in fullscreen mode.
+        if (!ToplevelManager.toplevels.values.some(t => t.fullscreen)) return false;
         const mon = root.monitors.find(m => m.name === monitorName);
         if (!mon) return false;
         const workspaceIds = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
@@ -55,21 +58,40 @@ Singleton {
 
     // Internals
 
+    // Setting running = true on a Process that is still running does nothing, so an event arriving
+    // while a query is in flight used to be lost and the data stayed stale (e.g. a window still
+    // reported as fullscreen after leaving fullscreen). Remember it and query again when done.
+    function requestRun(proc) {
+        if (proc.running) proc.pending = true;
+        else proc.running = true;
+    }
+
     function updateWindowList() {
-        getClients.running = true;
+        requestRun(getClients);
     }
 
     function updateLayers() {
-        getLayers.running = true;
+        requestRun(getLayers);
     }
 
     function updateMonitors() {
-        getMonitors.running = true;
+        requestRun(getMonitors);
     }
 
     function updateWorkspaces() {
-        getWorkspaces.running = true;
-        getActiveWorkspace.running = true;
+        requestRun(getWorkspaces);
+        requestRun(getActiveWorkspace);
+    }
+
+    component QueryProcess: Process {
+        id: queryProcess
+        property bool pending: false
+        onRunningChanged: {
+            if (!queryProcess.running && queryProcess.pending) {
+                queryProcess.pending = false;
+                Qt.callLater(() => { queryProcess.running = true; });
+            }
+        }
     }
 
     function updateAll() {
@@ -102,7 +124,7 @@ Singleton {
         }
     }
 
-    Process {
+    QueryProcess {
         id: getClients
         command: ["hyprctl", "clients", "-j"]
         stdout: StdioCollector {
@@ -120,7 +142,7 @@ Singleton {
         }
     }
 
-    Process {
+    QueryProcess {
         id: getMonitors
         command: ["hyprctl", "monitors", "-j"]
         stdout: StdioCollector {
@@ -131,7 +153,7 @@ Singleton {
         }
     }
 
-    Process {
+    QueryProcess {
         id: getLayers
         command: ["hyprctl", "layers", "-j"]
         stdout: StdioCollector {
@@ -142,7 +164,7 @@ Singleton {
         }
     }
 
-    Process {
+    QueryProcess {
         id: getWorkspaces
         command: ["hyprctl", "workspaces", "-j"]
         stdout: StdioCollector {
@@ -162,7 +184,7 @@ Singleton {
         }
     }
 
-    Process {
+    QueryProcess {
         id: getActiveWorkspace
         command: ["hyprctl", "activeworkspace", "-j"]
         stdout: StdioCollector {
