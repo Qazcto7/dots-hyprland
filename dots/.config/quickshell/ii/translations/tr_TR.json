@@ -635,5 +635,22 @@
   "Add to favorites": "Sık kullanılanlara ekle",
   "Remove from favorites": "Sık kullanılanlardan çıkar",
   "Pin to dock": "Dock'a sabitle",
-  "Unpin from dock": "Dock'tan kaldır"
+  "Unpin from dock": "Dock'tan kaldır",
+  "Desktop icons and right-click menu": "Masaüstü simgeleri ve sağ tık menüsü",
+  "Shows the files of your Desktop folder on the wallpaper. Right-click the desktop for a menu.": "Masaüstü klasöründeki dosyaları duvar kâğıdında gösterir. Menü için masaüstüne sağ tıklayın.",
+  "Show in file manager": "Dosya yöneticisinde göster",
+  "Rename": "Yeniden adlandır",
+  "New name:": "Yeni ad:",
+  "Move to trash": "Çöpe taşı",
+  "New folder": "Yeni klasör",
+  "New Folder": "Yeni Klasör",
+  "Folder name:": "Klasör adı:",
+  "New text file": "Yeni metin dosyası",
+  "New Text File": "Yeni Metin Dosyası",
+  "File name:": "Dosya adı:",
+  "Open terminal here": "Burada terminal aç",
+  "Open desktop folder": "Masaüstü klasörünü aç",
+  "Change wallpaper": "Duvar kâğıdını değiştir",
+  "Arrange icons": "Simgeleri düzenle",
+  "Display settings": "Ekran ayarları"
 }

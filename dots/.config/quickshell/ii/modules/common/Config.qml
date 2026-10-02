@@ -326,6 +326,7 @@ Singleton {
                 property bool floatingWindows: true // Plasma-like: windows float instead of tiling
                 property bool snapping: true // Snap floating windows to edges/each other
                 property bool kdeServices: true // Start kded6, SUPER+CTRL+I opens KDE System Settings
+                property bool desktopIcons: true // Icons of the desktop folder + right-click desktop menu
             }
 
             property JsonObject startMenu: JsonObject {

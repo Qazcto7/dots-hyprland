@@ -115,6 +115,17 @@ ContentPage {
             }
         }
         ConfigSwitch {
+            buttonIcon: "desktop_windows"
+            text: Translation.tr("Desktop icons and right-click menu")
+            checked: Config.options.desktopMode.desktopIcons
+            onCheckedChanged: {
+                Config.options.desktopMode.desktopIcons = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Shows the files of your Desktop folder on the wallpaper. Right-click the desktop for a menu.")
+            }
+        }
+        ConfigSwitch {
             buttonIcon: "select_window"
             text: Translation.tr("Floating windows (like KDE Plasma)")
             checked: Config.options.desktopMode.floatingWindows

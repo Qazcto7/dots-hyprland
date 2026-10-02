@@ -17,6 +17,7 @@ import Quickshell.Hyprland
 import qs.modules.ii.background.widgets
 import qs.modules.ii.background.widgets.clock
 import qs.modules.ii.background.widgets.weather
+import qs.modules.ii.background.desktop
 
 Variants {
     id: root
@@ -224,6 +225,16 @@ Variants {
                 }
             }
 
+            // Desktop icons (Plasma-like desktop mode), only on the first screen
+            readonly property bool showDesktopIcons: (Config.options?.desktopMode.desktopIcons ?? true)
+                && !GlobalStates.screenLocked && bgRoot.modelData === Quickshell.screens[0]
+            Loader {
+                id: desktopIconsLoader
+                anchors.fill: parent
+                active: parent.showDesktopIcons
+                sourceComponent: DesktopIcons {}
+            }
+
             WidgetCanvas {
                 id: widgetCanvas
                 width: parent.width
@@ -275,6 +286,14 @@ Variants {
                         wallpaperScale: 1
                         wallpaperSafetyTriggered: bgRoot.wallpaperSafetyTriggered
                     }
+                }
+            }
+
+            Loader {
+                anchors.fill: parent
+                active: desktopIconsLoader.status === Loader.Ready && desktopIconsLoader.item !== null
+                sourceComponent: DesktopContextMenu {
+                    desktop: desktopIconsLoader.item
                 }
             }
         }
