@@ -67,11 +67,28 @@ Item {
         return byType[item.suffix] ?? "text-x-generic";
     }
 
-    x: homeX
-    y: homeY
-    Behavior on x { enabled: !mouseArea.drag.active; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-    Behavior on y { enabled: !mouseArea.drag.active; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-    z: mouseArea.drag.active ? 10 : 0
+    // Follows the dragged icon when it is part of a multi-selection being dragged
+    readonly property bool followsGroup: selected && desktop.groupDragLeader !== "" && desktop.groupDragLeader !== item.name
+    readonly property bool groupDragging: desktop.groupDragLeader !== ""
+
+    x: homeX + (followsGroup ? desktop.groupDragDX : 0)
+    y: homeY + (followsGroup ? desktop.groupDragDY : 0)
+    Behavior on x { enabled: !mouseArea.drag.active && !root.groupDragging; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on y { enabled: !mouseArea.drag.active && !root.groupDragging; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    z: (mouseArea.drag.active || followsGroup) ? 10 : 0
+
+    Connections {
+        target: mouseArea.drag
+        function onActiveChanged() {
+            if (mouseArea.drag.active && root.selected && root.desktop.selectedNames.length > 1) {
+                root.desktop.groupDragDX = 0;
+                root.desktop.groupDragDY = 0;
+                root.desktop.groupDragLeader = root.item.name;
+            }
+        }
+    }
+    onXChanged: if (desktop.groupDragLeader === item.name) desktop.groupDragDX = x - homeX
+    onYChanged: if (desktop.groupDragLeader === item.name) desktop.groupDragDY = y - homeY
 
     Rectangle {
         anchors.fill: parent
@@ -152,11 +169,23 @@ Item {
                 root.desktop.open(root.item);
         }
         onReleased: {
+            if (root.desktop.groupDragLeader === root.item.name) {
+                const dCol = Math.round((root.x - root.homeX) / root.desktop.cellWidth);
+                const dRow = Math.round((root.y - root.homeY) / root.desktop.cellHeight);
+                const names = root.desktop.selectedNames;
+                root.desktop.groupDragLeader = "";
+                root.desktop.groupDragDX = 0;
+                root.desktop.groupDragDY = 0;
+                root.desktop.moveGroup(names, dCol, dRow);
+                root.x = Qt.binding(() => root.homeX + (root.followsGroup ? root.desktop.groupDragDX : 0));
+                root.y = Qt.binding(() => root.homeY + (root.followsGroup ? root.desktop.groupDragDY : 0));
+                return;
+            }
             if (drag.active || root.x !== root.homeX || root.y !== root.homeY) {
                 root.desktop.moveItemTo(root.item.name, root.x, root.y);
                 // If nothing changed, snap back
-                root.x = Qt.binding(() => root.homeX);
-                root.y = Qt.binding(() => root.homeY);
+                root.x = Qt.binding(() => root.homeX + (root.followsGroup ? root.desktop.groupDragDX : 0));
+                root.y = Qt.binding(() => root.homeY + (root.followsGroup ? root.desktop.groupDragDY : 0));
             }
         }
     }

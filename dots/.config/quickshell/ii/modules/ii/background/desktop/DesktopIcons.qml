@@ -36,6 +36,11 @@ Item {
     }
     function clearSelection() { root.selectedNames = []; }
     readonly property var selectedItems: root.items.filter(i => root.selectedNames.indexOf(i.name) !== -1)
+
+    // Group drag: while one selected icon is dragged, the other selected icons follow it by this offset
+    property string groupDragLeader: ""
+    property real groupDragDX: 0
+    property real groupDragDY: 0
     property var positions: ({}) // fileName -> { col, row }
     property var items: []       // [{ name, path, isDir, suffix, col, row }]
 
@@ -202,6 +207,39 @@ Item {
         if (other && moving)
             newPositions[other.name] = { col: moving.col, row: moving.row };
         newPositions[name] = { col: col, row: row };
+        root.positions = newPositions;
+        root.savePositions();
+        root.relayout();
+    }
+
+    // Move several icons by the same number of cells. Cells taken by other icons or under
+    // widgets are skipped: that icon goes to the nearest free cell instead.
+    function moveGroup(names, dCol, dRow) {
+        if (dCol === 0 && dRow === 0) {
+            root.relayout();
+            return;
+        }
+        const clampCol = c => Math.max(0, Math.min(root.columns - 1, c));
+        const clampRow = r => Math.max(0, Math.min(root.rows - 1, r));
+        const moving = root.items.filter(i => names.indexOf(i.name) !== -1);
+        const taken = root.blockedCells();
+        for (const i of root.items)
+            if (names.indexOf(i.name) === -1)
+                taken[`${i.col},${i.row}`] = true;
+        const newPositions = Object.assign({}, root.positions);
+        for (const i of root.items)
+            newPositions[i.name] = { col: i.col, row: i.row };
+        for (const i of moving) {
+            let col = clampCol(i.col + dCol);
+            let row = clampRow(i.row + dRow);
+            if (taken[`${col},${row}`]) {
+                const free = root.nearestFreeCell(col, row, taken);
+                col = free.col;
+                row = free.row;
+            }
+            newPositions[i.name] = { col: col, row: row };
+            taken[`${col},${row}`] = true;
+        }
         root.positions = newPositions;
         root.savePositions();
         root.relayout();
