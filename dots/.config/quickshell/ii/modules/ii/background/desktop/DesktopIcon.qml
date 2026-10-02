@@ -14,7 +14,7 @@ Item {
     required property real homeX
     required property real homeY
 
-    readonly property bool selected: desktop.selectedName === item.name
+    readonly property bool selected: desktop.selectedNames.indexOf(item.name) !== -1
     readonly property bool isImage: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].indexOf(item.suffix) !== -1
     readonly property var desktopEntry: item.suffix === "desktop" ? DesktopEntries.byId(item.name.replace(/\.desktop$/, "")) : null
 
@@ -138,7 +138,10 @@ Item {
 
         onPressed: event => {
             root.desktop.forceActiveFocus();
-            root.desktop.selectedName = root.item.name;
+            if (event.modifiers & Qt.ControlModifier)
+                root.desktop.toggleSelected(root.item.name);
+            else if (!root.selected) // keep a multi-selection when pressing one of its icons
+                root.desktop.selectOnly(root.item.name);
             if (event.button === Qt.RightButton) {
                 const p = mapToItem(root.desktop, event.x, event.y);
                 root.desktop.itemMenuRequested(root.item, p.x, p.y);

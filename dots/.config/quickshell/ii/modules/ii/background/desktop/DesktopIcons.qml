@@ -28,7 +28,14 @@ Item {
     readonly property int columns: Math.max(1, Math.floor((width - 2 * sideMargin) / cellWidth))
 
     property string desktopDir: ""
-    property string selectedName: ""
+    property var selectedNames: [] // multi-selection (click, Ctrl+click, rubber band)
+    function isSelected(name) { return root.selectedNames.indexOf(name) !== -1; }
+    function selectOnly(name) { root.selectedNames = [name]; }
+    function toggleSelected(name) {
+        root.selectedNames = root.isSelected(name) ? root.selectedNames.filter(n => n !== name) : root.selectedNames.concat([name]);
+    }
+    function clearSelection() { root.selectedNames = []; }
+    readonly property var selectedItems: root.items.filter(i => root.selectedNames.indexOf(i.name) !== -1)
     property var positions: ({}) // fileName -> { col, row }
     property var items: []       // [{ name, path, isDir, suffix, col, row }]
 
@@ -229,6 +236,9 @@ Item {
     function copyPath(item) {
         Quickshell.execDetached(["wl-copy", item.path]);
     }
+    function copyPaths(items) {
+        Quickshell.execDetached(["wl-copy", items.map(i => i.path).join("\n")]);
+    }
     function trash(item) {
         Quickshell.execDetached(["bash", "-c", 'gio trash "$1" || kioclient move "$1" trash:/', "trash", item.path]);
     }
@@ -261,20 +271,25 @@ Item {
     }
 
     // ---------- Keyboard (the background layer takes keyboard focus when clicked) ----------
-    readonly property var selectedItem: root.items.find(i => i.name === root.selectedName) ?? null
     focus: true
     Keys.onPressed: event => {
+        const selection = root.selectedItems;
         if (event.key === Qt.Key_Escape) {
-            root.selectedName = "";
-        } else if (!root.selectedItem) {
+            root.clearSelection();
+        } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
+            root.selectedNames = root.items.map(i => i.name);
+        } else if (selection.length === 0) {
             return;
         } else if (event.key === Qt.Key_Delete) {
-            root.trash(root.selectedItem);
-            root.selectedName = "";
+            for (const item of selection)
+                root.trash(item);
+            root.clearSelection();
         } else if (event.key === Qt.Key_F2) {
-            root.rename(root.selectedItem);
+            if (selection.length === 1)
+                root.rename(selection[0]);
         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            root.open(root.selectedItem);
+            for (const item of selection)
+                root.open(item);
         } else {
             return;
         }
@@ -335,15 +350,60 @@ Item {
     }
 
     // ---------- Empty desktop area ----------
+    // Left-drag on the empty desktop draws a selection rectangle (rubber band).
+    // Ctrl adds to the current selection instead of replacing it.
     MouseArea {
+        id: emptyArea
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
+        property real startX: 0
+        property real startY: 0
+        property bool banding: false
+        property var baseSelection: []
+
         onPressed: event => {
             root.forceActiveFocus();
-            root.selectedName = "";
-            if (event.button === Qt.RightButton)
+            if (event.button === Qt.RightButton) {
+                root.clearSelection();
                 root.desktopMenuRequested(event.x, event.y);
+                return;
+            }
+            emptyArea.baseSelection = (event.modifiers & Qt.ControlModifier) ? root.selectedNames : [];
+            root.selectedNames = emptyArea.baseSelection;
+            emptyArea.startX = event.x;
+            emptyArea.startY = event.y;
+            emptyArea.banding = true;
+            band.x = event.x;
+            band.y = event.y;
+            band.width = 0;
+            band.height = 0;
         }
+        onPositionChanged: event => {
+            if (!emptyArea.banding) return;
+            band.x = Math.min(emptyArea.startX, event.x);
+            band.y = Math.min(emptyArea.startY, event.y);
+            band.width = Math.abs(event.x - emptyArea.startX);
+            band.height = Math.abs(event.y - emptyArea.startY);
+            const hit = root.items.filter(i => {
+                // Use the visible part of the icon (cell with a small inset)
+                const x1 = root.cellX(i.col) + 8, y1 = root.cellY(i.row) + 4;
+                const x2 = x1 + root.cellWidth - 16, y2 = y1 + root.cellHeight - 8;
+                return x1 < band.x + band.width && x2 > band.x && y1 < band.y + band.height && y2 > band.y;
+            }).map(i => i.name);
+            root.selectedNames = emptyArea.baseSelection.concat(hit.filter(n => emptyArea.baseSelection.indexOf(n) === -1));
+        }
+        onReleased: emptyArea.banding = false
+        onCanceled: emptyArea.banding = false
+    }
+
+    Rectangle {
+        id: band
+        visible: emptyArea.banding && (width > 2 || height > 2)
+        z: 20
+        radius: 4
+        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.8)
+        border.width: 1
+        border.color: Appearance.colors.colPrimary
     }
 
     // ---------- Icons ----------

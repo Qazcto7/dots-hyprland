@@ -46,12 +46,23 @@ Item {
         onPressed: root.close()
     }
 
+    // With several icons selected, Open / Copy path / Move to trash act on all of them
+    readonly property var actionTargets: {
+        const selection = root.desktop?.selectedItems ?? [];
+        if (root.targetItem && selection.some(i => i.name === root.targetItem.name))
+            return selection;
+        return root.targetItem ? [root.targetItem] : [];
+    }
+    readonly property bool multiple: actionTargets.length > 1
     readonly property var itemActions: [
-        { icon: "open_in_new", text: Translation.tr("Open"), run: () => root.desktop.open(root.targetItem) },
-        { icon: "folder_open", text: Translation.tr("Show in file manager"), run: () => root.desktop.showInFileManager(root.targetItem) },
-        { icon: "edit", text: Translation.tr("Rename"), run: () => root.desktop.rename(root.targetItem) },
-        { icon: "content_copy", text: Translation.tr("Copy path"), run: () => root.desktop.copyPath(root.targetItem) },
-        { icon: "delete", text: Translation.tr("Move to trash"), run: () => root.desktop.trash(root.targetItem) },
+        { icon: "open_in_new", text: Translation.tr("Open"), run: () => root.actionTargets.forEach(i => root.desktop.open(i)) },
+        ...(root.multiple ? [] : [
+            { icon: "folder_open", text: Translation.tr("Show in file manager"), run: () => root.desktop.showInFileManager(root.targetItem) },
+            { icon: "edit", text: Translation.tr("Rename"), run: () => root.desktop.rename(root.targetItem) },
+        ]),
+        { icon: "content_copy", text: Translation.tr("Copy path"), run: () => root.desktop.copyPaths(root.actionTargets) },
+        { icon: "delete", text: root.multiple ? Translation.tr("Move %1 items to trash").arg(root.actionTargets.length) : Translation.tr("Move to trash"),
+            run: () => { root.actionTargets.forEach(i => root.desktop.trash(i)); root.desktop.clearSelection(); } },
     ]
     readonly property var desktopActions: [
         { icon: "create_new_folder", text: Translation.tr("New folder"), run: () => root.desktop.newFolder() },
