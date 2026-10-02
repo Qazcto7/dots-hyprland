@@ -139,6 +139,45 @@ ContentPage {
                 Config.options.dock.monochromeIcons = checked;
             }
         }
+
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "zoom_in"
+                text: Translation.tr("Magnify icons")
+                checked: Config.options.dock.magnification
+                onCheckedChanged: {
+                    Config.options.dock.magnification = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "animation"
+                text: Translation.tr("Bounce on launch")
+                checked: Config.options.dock.bounceOnLaunch
+                onCheckedChanged: {
+                    Config.options.dock.bounceOnLaunch = checked;
+                }
+            }
+        }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "fiber_manual_record"
+                text: Translation.tr("Single dot indicator")
+                checked: Config.options.dock.singleDotIndicator
+                onCheckedChanged: {
+                    Config.options.dock.singleDotIndicator = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "keep"
+                text: Translation.tr("Show pin button")
+                checked: Config.options.dock.showPinButton
+                onCheckedChanged: {
+                    Config.options.dock.showPinButton = checked;
+                }
+            }
+        }
     }
 
     ContentSection {

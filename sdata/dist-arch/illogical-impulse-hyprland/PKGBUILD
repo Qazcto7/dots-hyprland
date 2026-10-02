@@ -1,12 +1,12 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-hyprland
 pkgver=1.0
-pkgrel=5
+pkgrel=6
 pkgdesc='Illogical Impulse Hyprland relatated packages'
 arch=(any)
 license=(None)
 depends=(
-  hyprland
+  "hyprland>=0.56.2"
   hyprsunset
   wl-clipboard
 )

@@ -20,7 +20,67 @@ DockButton {
     readonly property bool isSeparator: appToplevel.appId === "SEPARATOR"
     property var desktopEntry: DesktopEntries.heuristicLookup(appToplevel.appId)
     enabled: !isSeparator
-    implicitWidth: isSeparator ? 1 : implicitHeight - topInset - bottomInset
+
+    // ---- macOS-style magnification ----
+    readonly property bool magnifyEnabled: Config.options?.dock.magnification ?? true
+    readonly property real maxMagnify: magnifyEnabled ? Math.max(1, Config.options?.dock.magnificationScale ?? 1.6) : 1
+    readonly property real baseWidth: implicitHeight - topInset - bottomInset
+    property real magnify: 1
+    Behavior on magnify {
+        NumberAnimation {
+            duration: 110
+            easing.type: Easing.OutCubic
+        }
+    }
+    implicitWidth: isSeparator ? 1 : baseWidth * magnify
+
+    // Imperative update (not a binding) so our own width change can't cause a binding loop
+    function updateMagnify() {
+        if (isSeparator || !magnifyEnabled || !appListRoot || !appListRoot.hovering) {
+            root.magnify = 1;
+            return;
+        }
+        const center = root.mapToItem(appListRoot, root.width / 2, 0).x;
+        const range = (Config.options?.dock.magnificationRange ?? 2.5) * root.baseWidth;
+        const distance = Math.abs(appListRoot.hoverX - center);
+        const t = distance >= range ? 0 : (Math.cos(Math.PI * distance / range) + 1) / 2;
+        root.magnify = 1 + (root.maxMagnify - 1) * t;
+    }
+    Connections {
+        target: root.appListRoot
+        function onHoverXChanged() { root.updateMagnify(); }
+        function onHoveringChanged() { root.updateMagnify(); }
+    }
+
+    // ---- Bounce while launching ----
+    property real bounceOffset: 0
+    readonly property bool hasWindows: appToplevel.toplevels.length > 0
+    onHasWindowsChanged: {
+        if (hasWindows) {
+            bounceAnim.stop();
+            root.bounceOffset = 0;
+        }
+    }
+    SequentialAnimation {
+        id: bounceAnim
+        loops: 3
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            from: 0
+            to: -14
+            duration: 220
+            easing.type: Easing.OutQuad
+        }
+        NumberAnimation {
+            target: root
+            property: "bounceOffset"
+            to: 0
+            duration: 220
+            easing.type: Easing.InQuad
+        }
+        onStopped: root.bounceOffset = 0
+    }
 
     Connections {
         target: DesktopEntries
@@ -64,6 +124,8 @@ DockButton {
     onClicked: {
         if (appToplevel.toplevels.length === 0) {
             root.desktopEntry?.execute();
+            if (Config.options?.dock.bounceOnLaunch ?? true)
+                bounceAnim.restart();
             return;
         }
         lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
@@ -83,35 +145,50 @@ DockButton {
         sourceComponent: Item {
             anchors.centerIn: parent
 
-            Loader {
-                id: iconImageLoader
+            // Rendered at max magnified size and scaled down, so icons stay sharp when they grow.
+            // Its bottom edge sits where the normal-size icon's bottom would be; it grows upward from there.
+            Item {
+                id: iconContainer
+                readonly property real renderSize: root.iconSize * root.maxMagnify
+                width: renderSize
+                height: renderSize
                 anchors {
-                    left: parent.left
-                    right: parent.right
+                    horizontalCenter: parent.horizontalCenter
                     verticalCenter: parent.verticalCenter
+                    verticalCenterOffset: -(renderSize - root.iconSize) / 2
                 }
-                active: !root.isSeparator
-                sourceComponent: IconImage {
-                    source: Quickshell.iconPath(AppSearch.guessIcon(appToplevel.appId), "image-missing")
-                    implicitSize: root.iconSize
+                scale: root.magnify / root.maxMagnify
+                transformOrigin: Item.Bottom
+                transform: Translate {
+                    y: root.bounceOffset
                 }
-            }
 
-            Loader {
-                active: Config.options.dock.monochromeIcons
-                anchors.fill: iconImageLoader
-                sourceComponent: Item {
-                    Desaturate {
-                        id: desaturatedIcon
-                        visible: false // There's already color overlay
-                        anchors.fill: parent
-                        source: iconImageLoader
-                        desaturation: 0.8
+                Loader {
+                    id: iconImageLoader
+                    anchors.fill: parent
+                    active: !root.isSeparator
+                    sourceComponent: IconImage {
+                        source: Quickshell.iconPath(AppSearch.guessIcon(appToplevel.appId), "image-missing")
+                        implicitSize: iconContainer.renderSize
                     }
-                    ColorOverlay {
-                        anchors.fill: desaturatedIcon
-                        source: desaturatedIcon
-                        color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
+                }
+
+                Loader {
+                    active: Config.options.dock.monochromeIcons
+                    anchors.fill: iconImageLoader
+                    sourceComponent: Item {
+                        Desaturate {
+                            id: desaturatedIcon
+                            visible: false // There's already color overlay
+                            anchors.fill: parent
+                            source: iconImageLoader
+                            desaturation: 0.8
+                        }
+                        ColorOverlay {
+                            anchors.fill: desaturatedIcon
+                            source: desaturatedIcon
+                            color: ColorUtils.transparentize(Appearance.colors.colPrimary, 0.9)
+                        }
                     }
                 }
             }
@@ -119,17 +196,18 @@ DockButton {
             RowLayout {
                 spacing: 3
                 anchors {
-                    top: iconImageLoader.bottom
+                    top: iconContainer.bottom
                     topMargin: 2
                     horizontalCenter: parent.horizontalCenter
                 }
                 Repeater {
-                    model: Math.min(appToplevel.toplevels.length, 3)
+                    readonly property bool singleDot: Config.options?.dock.singleDotIndicator ?? true
+                    model: Math.min(appToplevel.toplevels.length, singleDot ? 1 : 3)
                     delegate: Rectangle {
                         required property int index
                         radius: Appearance.rounding.full
-                        implicitWidth: (appToplevel.toplevels.length <= 3) ? 
-                            root.countDotWidth : root.countDotHeight // Circles when too many
+                        implicitWidth: ((Config.options?.dock.singleDotIndicator ?? true) || appToplevel.toplevels.length > 3) ?
+                            root.countDotHeight : root.countDotWidth // Circles for macOS style / too many
                         implicitHeight: root.countDotHeight
                         color: appIsActive ? Appearance.colors.colPrimary : ColorUtils.transparentize(Appearance.colors.colOnLayer0, 0.4)
                     }

@@ -22,6 +22,15 @@ Item {
     property bool buttonHovered: false
     property bool requestDockShow: previewPopup.show
 
+    // macOS-style magnification: cursor position over the app icons
+    readonly property bool hovering: magnifyHoverHandler.hovered
+    readonly property real hoverX: magnifyHoverHandler.point.position.x
+
+    HoverHandler {
+        id: magnifyHoverHandler
+        enabled: Config.options?.dock.magnification ?? true
+    }
+
     Layout.fillHeight: true
     Layout.topMargin: Appearance.sizes.hyprlandGapsOut
     implicitWidth: listView.implicitWidth
@@ -88,7 +97,8 @@ Item {
 
         Timer {
             id: updateTimer
-            interval: 100
+            // Longer delay when hiding so the cursor can travel from the icon up to the preview
+            interval: previewPopup.shouldShow ? 100 : 350
             onTriggered: {
                 previewPopup.show = previewPopup.shouldShow;
             }

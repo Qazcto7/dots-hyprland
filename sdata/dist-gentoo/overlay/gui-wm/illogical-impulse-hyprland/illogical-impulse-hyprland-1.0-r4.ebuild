@@ -12,6 +12,6 @@ KEYWORDS="~amd64"
 
 RDEPEND="
 	gui-apps/hyprsunset
-	>=gui-wm/hyprland-0.53.3:=
+	>=gui-wm/hyprland-0.56.2:=
 	gui-apps/wl-clipboard
 "

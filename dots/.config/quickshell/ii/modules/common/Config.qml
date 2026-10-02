@@ -323,12 +323,20 @@ Singleton {
             }
 
             property JsonObject dock: JsonObject {
-                property bool enable: false
-                property bool monochromeIcons: true
+                property bool enable: true
+                property bool monochromeIcons: false
                 property real height: 60
                 property real hoverRegionHeight: 2
-                property bool pinnedOnStartup: false
+                property bool pinnedOnStartup: true
                 property bool hoverToReveal: true // When false, only reveals on empty workspace
+                // macOS-style options
+                property bool showPinButton: false
+                property bool magnification: true // Icons grow under the cursor
+                property real magnificationScale: 1.6 // Max icon scale
+                property real magnificationRange: 2.5 // Falloff distance, in icon widths
+                property bool bounceOnLaunch: true // Icon bounces while app is starting
+                property bool singleDotIndicator: true // One dot per running app instead of window count
+                property real backgroundOpacity: 0.72
                 property list<string> pinnedApps: [ // IDs of pinned entries
                     "org.kde.dolphin", "kitty",]
                 property list<string> ignoredAppRegexes: []

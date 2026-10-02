@@ -5,6 +5,28 @@
 require("hyprland.lib")
 require("hyprland.services")
 
+-- Version check: these dots target Hyprland >= 0.56.2 --
+do
+    local MIN_VERSION = { 0, 56, 2 }
+    local ok, ver = pcall(function() return hl.version() end)
+    if ok and type(ver) == "string" then
+        local cur = {}
+        for n in ver:gmatch("%d+") do cur[#cur + 1] = tonumber(n) end
+        local older = false
+        for i = 1, 3 do
+            local a, b = cur[i] or 0, MIN_VERSION[i]
+            if a ~= b then older = a < b break end
+        end
+        if older then
+            pcall(hl.notification.create, {
+                text = "Hyprland " .. ver .. " is older than 0.56.2 - some features of these dotfiles may not work. Please update.",
+                duration = 10000,
+                icon = "warning",
+            })
+        end
+    end
+end
+
 -- Environment variables --
 require("hyprland.env")
 if is_file_exists(HOME .. "/.config/hypr/custom/env.lua") then
