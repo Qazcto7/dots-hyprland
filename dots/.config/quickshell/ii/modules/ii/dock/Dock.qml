@@ -37,8 +37,7 @@ Scope { // Scope
 
             // macOS-like: while a window is fullscreen on this screen, the dock hides and slides in
             // when the mouse reaches the bottom edge (drawn above the fullscreen window).
-            readonly property HyprlandMonitor hyprMonitor: Hyprland.monitorFor(dockRoot.screen)
-            readonly property bool fullscreenActive: (hyprMonitor?.activeWorkspace?.toplevels?.values ?? []).some(t => t.wayland?.fullscreen)
+            readonly property bool fullscreenActive: HyprlandData.hasFullscreenOn(dockRoot.screen?.name ?? "")
             readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || fullscreenActive
             WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 

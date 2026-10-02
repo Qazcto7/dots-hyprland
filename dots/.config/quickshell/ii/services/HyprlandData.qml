@@ -24,6 +24,15 @@ Singleton {
 
     // Convenient stuff
 
+    // True if a fullscreen window is shown on the monitor with this name
+    // (on its active workspace or on a special workspace open on it)
+    function hasFullscreenOn(monitorName) {
+        const mon = root.monitors.find(m => m.name === monitorName);
+        if (!mon) return false;
+        const workspaceIds = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
+        return root.windowList.some(w => workspaceIds.indexOf(w.workspace?.id) !== -1 && ((w.fullscreen ?? 0) & 2) !== 0);
+    }
+
     function toplevelsForWorkspace(workspace) {
         return ToplevelManager.toplevels.values.filter(toplevel => {
             const address = `0x${toplevel.HyprlandToplevel?.address}`;

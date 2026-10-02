@@ -658,5 +658,11 @@
   "macOS-style bar": "macOS tarzı bar",
   "Thin, flush to the screen edge and translucent. Overrides corner style and borderless.": "İnce, ekran kenarına yapışık ve yarı saydam. Köşe stili ve kenarsız ayarlarını geçersiz kılar.",
   "Untrusted launcher": "Güvenilmeyen kısayol",
-  "This launcher is not marked as trusted (executable). Only run it if you trust where it came from.\n\nRun it and mark it as trusted?": "Bu kısayol güvenilir (çalıştırılabilir) olarak işaretlenmemiş. Yalnızca nereden geldiğine güveniyorsan çalıştır.\n\nÇalıştırılsın ve güvenilir olarak işaretlensin mi?"
+  "This launcher is not marked as trusted (executable). Only run it if you trust where it came from.\n\nRun it and mark it as trusted?": "Bu kısayol güvenilir (çalıştırılabilir) olarak işaretlenmemiş. Yalnızca nereden geldiğine güveniyorsan çalıştır.\n\nÇalıştırılsın ve güvenilir olarak işaretlensin mi?",
+  "Move icon": "Simgeyi taşı",
+  "Move icons": "Simgeleri taşı",
+  "Undo: %1": "Geri al: %1",
+  "Invalid name": "Geçersiz ad",
+  "Already on the desktop, not copied": "Masaüstünde zaten var, kopyalanmadı",
+  "Copy to desktop": "Masaüstüne kopyala"
 }

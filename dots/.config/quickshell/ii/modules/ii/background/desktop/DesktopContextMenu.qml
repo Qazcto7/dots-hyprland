@@ -62,9 +62,12 @@ Item {
         ]),
         { icon: "content_copy", text: Translation.tr("Copy path"), run: () => root.desktop.copyPaths(root.actionTargets) },
         { icon: "delete", text: root.multiple ? Translation.tr("Move %1 items to trash").arg(root.actionTargets.length) : Translation.tr("Move to trash"),
-            run: () => { root.actionTargets.forEach(i => root.desktop.trash(i)); root.desktop.clearSelection(); } },
+            run: () => { root.desktop.trashMany(root.actionTargets); root.desktop.clearSelection(); } },
     ]
     readonly property var desktopActions: [
+        ...(root.desktop?.lastUndo ? [
+            { icon: "undo", text: Translation.tr("Undo: %1").arg(root.desktop.lastUndo.label) + "  (Ctrl+Z)", run: () => root.desktop.undo() },
+        ] : []),
         { icon: "create_new_folder", text: Translation.tr("New folder"), run: () => root.desktop.newFolder() },
         { icon: "note_add", text: Translation.tr("New text file"), run: () => root.desktop.newTextFile() },
         { icon: "terminal", text: Translation.tr("Open terminal here"), run: () => root.desktop.openTerminalHere() },

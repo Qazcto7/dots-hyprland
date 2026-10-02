@@ -90,6 +90,12 @@ Item {
         Config.options.startMenu.favorites = isFavorite(id) ? favs.filter(f => f !== id) : favs.concat([id]);
     }
 
+    // Dock pins match running windows by their class, which is the .desktop StartupWMClass
+    // when an app sets one (e.g. org.mozilla.firefox.desktop -> "firefox"); otherwise the desktop id.
+    function dockId(entry) {
+        return (entry?.startupClass || entry?.id || "").toLowerCase();
+    }
+
     function launch(entry) {
         if (!entry) return;
         entry.execute();
@@ -343,9 +349,9 @@ Item {
             }
             ContextItem {
                 materialIcon: "keep"
-                mainText: TaskbarApps.isPinned(contextMenu.entry?.id ?? "") ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock")
+                mainText: TaskbarApps.isPinned(root.dockId(contextMenu.entry)) ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock")
                 onClicked: {
-                    TaskbarApps.togglePin(contextMenu.entry.id);
+                    TaskbarApps.togglePin(root.dockId(contextMenu.entry));
                     contextMenu.close();
                 }
             }

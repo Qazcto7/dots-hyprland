@@ -79,7 +79,7 @@ Variants {
         // WlrLayershell.layer: WlrLayer.Bottom
         WlrLayershell.namespace: "quickshell:background"
         // Desktop icons: clicking the desktop gives it the keyboard (Delete, F2, Enter, Esc)
-        WlrLayershell.keyboardFocus: (desktopIconsLoader.item && desktopIconsLoader.item.selectedNames.length > 0 && !GlobalStates.screenLocked) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        WlrLayershell.keyboardFocus: (desktopIconsLoader.item && desktopIconsLoader.item.wantsKeyboard && !GlobalStates.screenLocked) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
         anchors {
             top: true
             bottom: true

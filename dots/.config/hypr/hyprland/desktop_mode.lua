@@ -5,10 +5,15 @@
 
 local defaults = { floating = true, snap = true, kde_services = true }
 
+-- The file is only parsed for "key = true/false" pairs, never executed
 local mode = {}
-local ok, generated = pcall(dofile, HOME .. "/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua")
-if ok and type(generated) == "table" then
-    mode = generated
+local file = io.open(HOME .. "/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua", "r")
+if file then
+    local text = file:read("*a") or ""
+    file:close()
+    for key, value in text:gmatch("([%w_]+)%s*=%s*(%a+)") do
+        if value == "true" then mode[key] = true elseif value == "false" then mode[key] = false end
+    end
 end
 for key, value in pairs(defaults) do
     if mode[key] == nil then
@@ -81,8 +86,13 @@ local function geometricMaximizeToggle(win)
 
     local areaX = mon.x + reserved.left
     local areaY = mon.y + reserved.top
-    local areaW = mon.width / scale - reserved.left - reserved.right
-    local areaH = mon.height / scale - reserved.top - reserved.bottom
+    -- Rotated monitors (transform 1, 3, 5, 7) report width/height of the unrotated panel
+    local pixelW, pixelH = mon.width, mon.height
+    if (mon.transform or 0) % 2 == 1 then
+        pixelW, pixelH = pixelH, pixelW
+    end
+    local areaW = pixelW / scale - reserved.left - reserved.right
+    local areaH = pixelH / scale - reserved.top - reserved.bottom
 
     maximizedGeometry[key] = { x = win.at.x, y = win.at.y, w = win.size.x, h = win.size.y }
     -- Resize first: Hyprland resizes floating windows around their center and keeps them on
@@ -118,6 +128,13 @@ function desktop_toggle_maximize(win)
     end
     geometricMaximizeToggle(win)
 end
+
+-- Forget saved geometry of closed windows
+hl.on("window.close", function(win)
+    if win and win.address then
+        maximizedGeometry[win.address] = nil
+    end
+end)
 
 if mode.floating then
     -- SUPER + D maximizes directly (smooth, no detour through Hyprland's maximized state)

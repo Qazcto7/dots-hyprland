@@ -55,8 +55,7 @@ Scope {
 
                 // macOS-like: while a window is fullscreen on this screen, the bar hides and
                 // slides in when the mouse reaches the top edge (drawn above the fullscreen window).
-                readonly property HyprlandMonitor hyprMonitor: Hyprland.monitorFor(barRoot.screen)
-                readonly property bool fullscreenActive: (hyprMonitor?.activeWorkspace?.toplevels?.values ?? []).some(t => t.wayland?.fullscreen)
+                readonly property bool fullscreenActive: HyprlandData.hasFullscreenOn(barRoot.screen?.name ?? "")
                 readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || fullscreenActive
                 WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 

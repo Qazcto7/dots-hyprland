@@ -213,6 +213,27 @@ Item {
             byName[item.name] = item;
         root.itemByName = byName;
         root.items = result;
+        root.prunePositions(byName);
+    }
+
+    // Names reserved for files that are about to appear (dropped files): name -> timestamp
+    property var reservedNames: ({})
+    // Forget positions of files that are gone, so desktop_icons.json doesn't grow forever
+    function prunePositions(existing) {
+        const now = Date.now();
+        let changed = false;
+        const kept = {};
+        for (const name in root.positions) {
+            const reservedAt = root.reservedNames[name];
+            if (existing[name] || (reservedAt && now - reservedAt < 60000))
+                kept[name] = root.positions[name];
+            else
+                changed = true;
+        }
+        if (changed) {
+            root.positions = kept;
+            root.savePositions();
+        }
     }
 
     function cellX(col) { return root.sideMargin + col * root.cellWidth; }
@@ -220,6 +241,7 @@ Item {
 
     // Drop an icon at pixel position; snaps to the nearest cell, swaps with an icon already there
     function moveItemTo(name, x, y) {
+        root.pushUndo({ type: "positions", label: Translation.tr("Move icon"), positions: root.snapshotPositions() });
         let col = Math.max(0, Math.min(root.columns - 1, Math.round((x - root.sideMargin) / root.cellWidth)));
         let row = Math.max(0, Math.min(root.rows - 1, Math.round((y - root.topMargin) / root.cellHeight)));
         // Dropped under a widget: use the nearest cell that is not under one
@@ -249,6 +271,7 @@ Item {
             root.relayout();
             return;
         }
+        root.pushUndo({ type: "positions", label: Translation.tr("Move icons"), positions: root.snapshotPositions() });
         const clampCol = c => Math.max(0, Math.min(root.columns - 1, c));
         const clampRow = r => Math.max(0, Math.min(root.rows - 1, r));
         const moving = root.items.filter(i => names.indexOf(i.name) !== -1);
@@ -276,10 +299,89 @@ Item {
     }
 
     function resetPositions() {
+        root.pushUndo({ type: "positions", label: Translation.tr("Arrange icons"), positions: root.snapshotPositions() });
         root.positions = {};
         root.savePositions();
         root.relayout();
     }
+
+    // ---------- Undo (Ctrl+Z) ----------
+    // Each entry knows how to revert one desktop action: icon moves, move to trash,
+    // rename, new folder/file and files dropped onto the desktop.
+    property var undoStack: []
+    readonly property int undoLimit: 30
+    readonly property var lastUndo: root.undoStack.length > 0 ? root.undoStack[root.undoStack.length - 1] : null
+
+    function pushUndo(entry) {
+        const stack = root.undoStack.concat([entry]);
+        root.undoStack = stack.length > root.undoLimit ? stack.slice(stack.length - root.undoLimit) : stack;
+    }
+    function snapshotPositions() {
+        const copy = {};
+        for (const key in root.positions)
+            copy[key] = { col: root.positions[key].col, row: root.positions[key].row };
+        return copy;
+    }
+
+    // Restores files moved to the trash by this desktop, newest trash entry first.
+    // Uses the freedesktop trash layout directly (~/.local/share/Trash/{files,info}).
+    readonly property string restoreFromTrashScript: 'import os, sys, urllib.parse, configparser\n'
+        + 'base = os.path.join(os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")), "Trash")\n'
+        + 'infos = []\n'
+        + 'for f in os.listdir(os.path.join(base, "info")):\n'
+        + '    if not f.endswith(".trashinfo"): continue\n'
+        + '    c = configparser.ConfigParser(interpolation=None)\n'
+        + '    try: c.read(os.path.join(base, "info", f), encoding="utf-8")\n'
+        + '    except Exception: continue\n'
+        + '    p = urllib.parse.unquote(c.get("Trash Info", "Path", fallback=""))\n'
+        + '    infos.append((c.get("Trash Info", "DeletionDate", fallback=""), p, f[:-len(".trashinfo")]))\n'
+        + 'infos.sort(reverse=True)\n'
+        + 'for target in sys.argv[1:]:\n'
+        + '    for date, p, name in infos:\n'
+        + '        if p == target and not os.path.exists(target):\n'
+        + '            os.rename(os.path.join(base, "files", name), target)\n'
+        + '            os.remove(os.path.join(base, "info", name + ".trashinfo"))\n'
+        + '            break\n'
+
+    function undo() {
+        const entry = root.lastUndo;
+        if (!entry) return;
+        root.undoStack = root.undoStack.slice(0, root.undoStack.length - 1);
+        if (entry.type === "positions") {
+            root.positions = entry.positions;
+            root.savePositions();
+            root.relayout();
+        } else if (entry.type === "trash") {
+            Quickshell.execDetached(["python3", "-c", root.restoreFromTrashScript, ...entry.paths]);
+        } else if (entry.type === "rename") {
+            Quickshell.execDetached(["mv", "-n", "--", `${root.desktopDir}/${entry.newName}`, `${root.desktopDir}/${entry.oldName}`]);
+        } else if (entry.type === "created") {
+            // New folder/file or dropped copies: undo moves them to the trash (never deletes)
+            Quickshell.execDetached(["gio", "trash", ...entry.paths]);
+        }
+    }
+
+    // Runs a command and gives its stdout to a callback (used to learn what an action created)
+    Component {
+        id: captureProcess
+        Process {
+            id: proc
+            property var callback: null
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    if (proc.callback) proc.callback(text);
+                    proc.destroy();
+                }
+            }
+        }
+    }
+    function runCapture(command, callback) {
+        const proc = captureProcess.createObject(root, { command: command, callback: callback });
+        proc.running = true;
+    }
+
+    // Rejects names that would leave the desktop folder ("a/b", ".", "..")
+    readonly property string validNameFn: 'valid() { case "$1" in ""|.|..|*/*) notify-send -a Desktop "$2" "$1"; return 1;; esac; return 0; }'
 
     // ---------- Actions ----------
     // Text prompt with kdialog (KDE) or zenity; prints the answer, empty on cancel
@@ -315,19 +417,41 @@ Item {
         Quickshell.execDetached(["wl-copy", items.map(i => i.path).join("\n")]);
     }
     function trash(item) {
-        Quickshell.execDetached(["bash", "-c", 'gio trash "$1" || kioclient move "$1" trash:/', "trash", item.path]);
+        root.trashMany([item]);
     }
+    function trashMany(items) {
+        const paths = items.map(i => i.path).filter(p => p !== "");
+        if (paths.length === 0) return;
+        root.pushUndo({ type: "trash", label: Translation.tr("Move to trash"), paths: paths });
+        Quickshell.execDetached(["gio", "trash", ...paths]);
+    }
+    // The scripts print the resulting name on success so the action can be undone
     function rename(item) {
-        Quickshell.execDetached(["bash", "-c", root.askFn + '; new="$(ask "$3" "$4" "$2")"; [ -n "$new" ] && [ "$new" != "$2" ] && mv -n -- "$1/$2" "$1/$new"',
-            "rename", root.desktopDir, item.name, Translation.tr("Rename"), Translation.tr("New name:")]);
+        root.runCapture(["bash", "-c", root.askFn + '; ' + root.validNameFn
+            + '; new="$(ask "$3" "$4" "$2")"; [ -n "$new" ] && [ "$new" != "$2" ] && valid "$new" "$5" && [ ! -e "$1/$new" ] && mv -n -- "$1/$2" "$1/$new" && printf "%s" "$new"',
+            "rename", root.desktopDir, item.name, Translation.tr("Rename"), Translation.tr("New name:"), Translation.tr("Invalid name")],
+            out => {
+                if (out !== "")
+                    root.pushUndo({ type: "rename", label: Translation.tr("Rename"), oldName: item.name, newName: out });
+            });
     }
     function newFolder() {
-        Quickshell.execDetached(["bash", "-c", root.askFn + '; n="$(ask "$3" "$4" "$2")"; [ -n "$n" ] && mkdir -p -- "$1/$n"',
-            "newfolder", root.desktopDir, Translation.tr("New Folder"), Translation.tr("New folder"), Translation.tr("Folder name:")]);
+        root.runCapture(["bash", "-c", root.askFn + '; ' + root.validNameFn
+            + '; n="$(ask "$3" "$4" "$2")"; [ -n "$n" ] && valid "$n" "$5" && [ ! -e "$1/$n" ] && mkdir -- "$1/$n" && printf "%s" "$1/$n"',
+            "newfolder", root.desktopDir, Translation.tr("New Folder"), Translation.tr("New folder"), Translation.tr("Folder name:"), Translation.tr("Invalid name")],
+            out => {
+                if (out !== "")
+                    root.pushUndo({ type: "created", label: Translation.tr("New folder"), paths: [out] });
+            });
     }
     function newTextFile() {
-        Quickshell.execDetached(["bash", "-c", root.askFn + '; n="$(ask "$3" "$4" "$2")"; [ -n "$n" ] && [ ! -e "$1/$n" ] && touch -- "$1/$n"',
-            "newfile", root.desktopDir, Translation.tr("New Text File") + ".txt", Translation.tr("New text file"), Translation.tr("File name:")]);
+        root.runCapture(["bash", "-c", root.askFn + '; ' + root.validNameFn
+            + '; n="$(ask "$3" "$4" "$2")"; [ -n "$n" ] && valid "$n" "$5" && [ ! -e "$1/$n" ] && touch -- "$1/$n" && printf "%s" "$1/$n"',
+            "newfile", root.desktopDir, Translation.tr("New Text File") + ".txt", Translation.tr("New text file"), Translation.tr("File name:"), Translation.tr("Invalid name")],
+            out => {
+                if (out !== "")
+                    root.pushUndo({ type: "created", label: Translation.tr("New text file"), paths: [out] });
+            });
     }
     function openTerminalHere() {
         Quickshell.execDetached(["bash", "-c", 'cd "$1" && (kitty --directory "$1" || foot || konsole --workdir "$1")', "term", root.desktopDir]);
@@ -351,22 +475,28 @@ Item {
     Connections {
         target: Hyprland
         function onRawEvent(event) {
-            if (event.name === "activewindowv2" && event.data !== "" && event.data !== ",")
+            if (event.name === "activewindowv2" && event.data !== "" && event.data !== ",") {
                 root.clearSelection();
+                root.desktopActive = false;
+            }
         }
     }
+    // True after clicking the desktop until a window gets focus; lets Ctrl+Z reach the desktop
+    property bool desktopActive: false
+    readonly property bool wantsKeyboard: root.selectedNames.length > 0 || root.desktopActive
     focus: true
     Keys.onPressed: event => {
         const selection = root.selectedItems;
         if (event.key === Qt.Key_Escape) {
             root.clearSelection();
+        } else if (event.key === Qt.Key_Z && (event.modifiers & Qt.ControlModifier)) {
+            root.undo();
         } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
             root.selectedNames = root.items.map(i => i.name);
         } else if (selection.length === 0) {
             return;
         } else if (event.key === Qt.Key_Delete) {
-            for (const item of selection)
-                root.trash(item);
+            root.trashMany(selection);
             root.clearSelection();
         } else if (event.key === Qt.Key_F2) {
             if (selection.length === 1)
@@ -400,7 +530,18 @@ Item {
             if (paths.length === 0)
                 return;
             root.placeDroppedFiles(paths.map(p => p.substring(p.lastIndexOf("/") + 1)), drop.x, drop.y);
-            Quickshell.execDetached(["bash", "-c", 'dir="$1"; shift; cp -rn -- "$@" "$dir"/', "drop", root.desktopDir, ...paths]);
+            // Items whose name already exists on the desktop are skipped (no overwriting, no merging
+            // folders); the script prints the copied paths, one per line, for undo.
+            root.runCapture(["bash", "-c", 'dir="$1"; msg="$2"; shift 2; skipped=0; '
+                + 'for src in "$@"; do b="$(basename -- "$src")"; '
+                + 'if [ -e "$dir/$b" ]; then skipped=$((skipped+1)); elif cp -r -- "$src" "$dir/$b"; then printf "%s\\n" "$dir/$b"; fi; done; '
+                + '[ "$skipped" -gt 0 ] && notify-send -a Desktop "$msg" "$skipped"; true',
+                "drop", root.desktopDir, Translation.tr("Already on the desktop, not copied"), ...paths],
+                out => {
+                    const copied = out.split("\n").filter(line => line !== "");
+                    if (copied.length > 0)
+                        root.pushUndo({ type: "created", label: Translation.tr("Copy to desktop"), paths: copied });
+                });
             drop.accept(Qt.CopyAction);
         }
     }
@@ -427,6 +568,7 @@ Item {
                 continue; // name already exists on the desktop; cp/mv -n won't overwrite it
             const cell = root.nearestFreeCell(col, row, taken);
             newPositions[name] = cell;
+            root.reservedNames[name] = Date.now();
             taken[`${cell.col},${cell.row}`] = true;
         }
         root.positions = newPositions;
@@ -447,6 +589,7 @@ Item {
 
         onPressed: event => {
             root.forceActiveFocus();
+            root.desktopActive = true;
             if (event.button === Qt.RightButton) {
                 root.clearSelection();
                 root.desktopMenuRequested(event.x, event.y);
