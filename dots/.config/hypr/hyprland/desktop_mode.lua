@@ -21,6 +21,7 @@ end
 if mode.floating then
     hl.window_rule({ match = { class = ".*" }, float = true })
     hl.window_rule({ match = { class = ".*" }, center = true })
+    hl.config({ cursor = { no_warps = true } }) -- Plasma-like: focusing a window never moves the mouse
 end
 
 -- Snap floating windows to screen edges and to each other while dragging
