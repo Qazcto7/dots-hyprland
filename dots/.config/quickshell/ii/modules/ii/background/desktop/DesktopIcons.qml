@@ -17,9 +17,15 @@ import qs.modules.common.functions
 Item {
     id: root
 
-    // Area kept free for the bar (top) and the dock (bottom)
-    property real topMargin: 70
-    property real bottomMargin: 110
+    // Area kept free for the bar and the dock, taken from their real sizes so the
+    // first icon row starts right under the bar (no unusable empty strip)
+    readonly property real barSpace: (Config.options?.bar.vertical ?? false) ? 0
+        : Appearance.sizes.baseBarHeight + ((Config.options?.bar.cornerStyle ?? 0) === 1 ? Appearance.sizes.hyprlandGapsOut : 0) + 4
+    readonly property real dockSpace: ((Config.options?.dock.enable ?? false) && (Config.options?.dock.pinnedOnStartup ?? false))
+        ? (Config.options?.dock.height ?? 60) + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut + 8 : 0
+    readonly property bool barAtBottom: Config.options?.bar.bottom ?? false
+    property real topMargin: (barAtBottom ? 0 : barSpace) + 4
+    property real bottomMargin: (barAtBottom ? barSpace : 0) + dockSpace + 4
     property real sideMargin: 16
     readonly property real cellWidth: 96
     readonly property real cellHeight: 104
