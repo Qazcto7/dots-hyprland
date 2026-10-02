@@ -60,3 +60,6 @@ hl.plugin.hyprbars.add_button({
     action = [[hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })']],
 })
 
+-- Apps that already draw their own title bar buttons (client-side decorations).
+-- Without this they would show two sets of buttons.
+hl.window_rule({ match = { class = "^(firefox|org.mozilla.firefox)$" }, ["hyprbars:no_bar"] = true })
