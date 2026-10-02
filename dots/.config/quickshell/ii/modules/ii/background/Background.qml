@@ -237,6 +237,9 @@ Variants {
 
             WidgetCanvas {
                 id: widgetCanvas
+                // The canvas itself is a full-screen MouseArea; let clicks through to the desktop icons.
+                // Widgets on it (clock, weather) have their own MouseAreas and stay draggable.
+                acceptedButtons: Qt.NoButton
                 width: parent.width
                 height: parent.height
                 readonly property real parallaxFactor: {

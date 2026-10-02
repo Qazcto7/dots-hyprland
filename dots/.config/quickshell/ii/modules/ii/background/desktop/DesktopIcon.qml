@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 import qs.modules.common
 import qs.modules.common.functions
@@ -17,9 +18,38 @@ Item {
     readonly property bool isImage: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].indexOf(item.suffix) !== -1
     readonly property var desktopEntry: item.suffix === "desktop" ? DesktopEntries.byId(item.name.replace(/\.desktop$/, "")) : null
 
-    readonly property string displayName: desktopEntry?.name ?? item.name
+    // .desktop files that are not installed apps (e.g. copied launchers): read Name/Icon from the file
+    property var parsedDesktop: ({})
+    FileView {
+        id: desktopFile
+        path: (root.item.suffix === "desktop" && !root.desktopEntry) ? root.item.path : ""
+        onLoaded: root.parsedDesktop = root.parseDesktopFile(desktopFile.text())
+    }
+    function parseDesktopFile(text) {
+        const result = {};
+        let inMain = false;
+        for (const rawLine of text.split("\n")) {
+            const line = rawLine.trim();
+            if (line.startsWith("[")) {
+                inMain = (line === "[Desktop Entry]");
+                continue;
+            }
+            if (!inMain) continue;
+            const eq = line.indexOf("=");
+            if (eq < 0) continue;
+            const key = line.slice(0, eq).trim();
+            const value = line.slice(eq + 1).trim();
+            if (key === "Name[tr_TR]" || key === "Name[tr]") result.localName = value;
+            else if (key === "Name" && result.name === undefined) result.name = value;
+            else if (key === "Icon" && result.icon === undefined) result.icon = value;
+        }
+        return result;
+    }
+
+    readonly property string displayName: desktopEntry?.name ?? parsedDesktop.localName ?? parsedDesktop.name ?? item.name
     readonly property string iconName: {
         if (desktopEntry) return desktopEntry.icon;
+        if (parsedDesktop.icon) return parsedDesktop.icon;
         if (item.isDir) return "folder";
         const byType = {
             "pdf": "application-pdf",
@@ -67,7 +97,7 @@ Item {
                 anchors.fill: parent
                 visible: !root.isImage
                 implicitSize: 52
-                source: Quickshell.iconPath(root.iconName, "text-x-generic")
+                source: root.iconName.startsWith("/") ? `file://${root.iconName}` : Quickshell.iconPath(root.iconName, "application-x-executable")
             }
             Image {
                 anchors.fill: parent
