@@ -25,10 +25,15 @@ hl.config({
             bar_part_of_window = true,
             bar_precedence_over_border = true,
             icon_on_hover = false, -- icons always visible
-            on_double_click = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+            on_double_click = [[hyprctl eval 'desktop_toggle_maximize()']],
         },
     },
 })
+
+-- Maximize (button and double-click) calls desktop_toggle_maximize() from desktop_mode.lua,
+-- which needs to know how tall the bar above the window is.
+DESKTOP_TITLEBAR_HEIGHT = 36
+DESKTOP_TITLEBAR_EXCLUDED = { ["firefox"] = true, ["org.mozilla.firefox"] = true }
 
 -- Right alignment: the first button added is the rightmost one.
 local button_bg = "rgba(ffffff1f)"
@@ -48,7 +53,7 @@ hl.plugin.hyprbars.add_button({
     fg_color = button_fg,
     size = 24,
     icon = "◇",
-    action = [[hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" })']],
+    action = [[hyprctl eval 'desktop_toggle_maximize()']],
 })
 -- Minimize: Hyprland has no real minimize, so the window goes to a hidden
 -- special workspace. Clicking its dock icon brings it back.

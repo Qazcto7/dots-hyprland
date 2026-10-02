@@ -47,3 +47,61 @@ if mode.kde_services then
     hl.bind("SUPER + CTRL + I", hl.dsp.exec_cmd("env XDG_CURRENT_DESKTOP=KDE systemsettings"),
         { description = "App: KDE System Settings" })
 end
+
+-- Plasma-like maximize for floating windows: the window is resized to fill the free area
+-- (between bar and dock) and stays a normal floating window, so other windows on top of it
+-- still get mouse focus. Hyprland's own "maximized" mode is a fullscreen state that blocks
+-- focus-follows-mouse for every other window. Calling it again restores the previous geometry.
+-- Used by the title bar's maximize button / double-click (hyprctl eval 'desktop_toggle_maximize()').
+local maximizedGeometry = {}
+
+function desktop_toggle_maximize()
+    local win = hl.get_active_window()
+    if not win then return end
+
+    -- Leave Hyprland fullscreen/maximized state first (e.g. windows maximized before this existed)
+    if (win.fullscreen or 0) ~= 0 then
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset", window = win }))
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "unset", window = win }))
+        return
+    end
+
+    -- Tiled windows: use Hyprland's maximize as before
+    if not win.floating then
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle", window = win }))
+        return
+    end
+
+    local key = win.address
+    local saved = maximizedGeometry[key]
+    if saved then
+        maximizedGeometry[key] = nil
+        hl.dispatch(hl.dsp.window.resize({ x = saved.w, y = saved.h, window = win }))
+        hl.dispatch(hl.dsp.window.move({ x = saved.x, y = saved.y, window = win }))
+        return
+    end
+
+    local mon = win.monitor
+    if not mon then return end
+    local scale = mon.scale or 1
+    local reserved = mon.reserved or { top = 0, right = 0, bottom = 0, left = 0 }
+    local border = tonumber(hl.get_config("general:border_size")) or 1
+    local gap = 6
+    local bar = 0
+    if DESKTOP_TITLEBAR_HEIGHT and not (DESKTOP_TITLEBAR_EXCLUDED or {})[win.class] then
+        bar = DESKTOP_TITLEBAR_HEIGHT
+    end
+
+    local areaX = mon.x + reserved.left
+    local areaY = mon.y + reserved.top
+    local areaW = mon.width / scale - reserved.left - reserved.right
+    local areaH = mon.height / scale - reserved.top - reserved.bottom
+
+    maximizedGeometry[key] = { x = win.at.x, y = win.at.y, w = win.size.x, h = win.size.y }
+    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + gap + border + bar, window = win }))
+    hl.dispatch(hl.dsp.window.resize({
+        x = math.floor(areaW - 2 * (gap + border)),
+        y = math.floor(areaH - 2 * (gap + border) - bar),
+        window = win,
+    }))
+end
