@@ -40,6 +40,7 @@ require("hyprland.rules")
 require("hyprland.colors")
 require("hyprland.keybinds")
 require("hyprland.titlebars")
+require("hyprland.minimize")
 require("hyprland.desktop_mode")
 
 -- Custom configurations --
