@@ -21,6 +21,11 @@ DockButton {
     property var desktopEntry: DesktopEntries.heuristicLookup(appToplevel.appId)
     enabled: !isSeparator
 
+    // The ripple background renders through an OpacityMask layer whose corner radius is
+    // much wider than a 1px separator, which leaves garbage pixels. Separators draw no background.
+    background.visible: !isSeparator
+    background.layer.enabled: !isSeparator
+
     // ---- macOS-style magnification ----
     readonly property bool magnifyEnabled: Config.options?.dock.magnification ?? true
     readonly property real maxMagnify: magnifyEnabled ? Math.max(1, Config.options?.dock.magnificationScale ?? 1.6) : 1
@@ -90,14 +95,15 @@ DockButton {
         }
     }
 
-    Loader {
-        active: isSeparator
-        anchors {
-            fill: parent
-            topMargin: dockVisualBackground.margin + dockRow.padding + Appearance.rounding.normal
-            bottomMargin: dockVisualBackground.margin + dockRow.padding + Appearance.rounding.normal
-        }
-        sourceComponent: DockSeparator {}
+    // Separator between pinned and running apps: a plain centered line, icon-height
+    Rectangle {
+        visible: root.isSeparator
+        anchors.centerIn: parent
+        width: 1
+        height: root.iconSize * 0.8
+        radius: 0
+        antialiasing: false
+        color: Appearance.colors.colOutlineVariant
     }
 
     Loader {
