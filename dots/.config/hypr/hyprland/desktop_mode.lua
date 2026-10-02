@@ -85,12 +85,14 @@ local function geometricMaximizeToggle(win)
     local areaH = mon.height / scale - reserved.top - reserved.bottom
 
     maximizedGeometry[key] = { x = win.at.x, y = win.at.y, w = win.size.x, h = win.size.y }
-    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + gap + border + bar, window = win }))
+    -- Resize first: Hyprland resizes floating windows around their center and keeps them on
+    -- screen, which would shift an already-moved window. Then move to the exact position.
     hl.dispatch(hl.dsp.window.resize({
         x = math.floor(areaW - 2 * (gap + border)),
         y = math.floor(areaH - 2 * (gap + border) - bar),
         window = win,
     }))
+    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + gap + border + bar, window = win }))
 end
 
 function desktop_toggle_maximize(win)
