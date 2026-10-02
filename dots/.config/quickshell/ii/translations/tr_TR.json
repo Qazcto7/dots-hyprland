@@ -604,5 +604,15 @@
   "Recognize music": "Müziği tanı",
   "Stroke width": "Çizgi genişliği",
   "Use varying shapes for password characters": "Şifre karakterleri için değişen şekiller kullan",
-  "Battery full": "Pil dolu"
+  "Battery full": "Pil dolu",
+  "Desktop mode": "Masaüstü modu",
+  "Floating windows (like KDE Plasma)": "Serbest pencereler (KDE Plasma gibi)",
+  "New windows open centered and floating instead of tiled. Turn off to go back to tiling.": "Yeni pencereler döşenmek yerine ortada serbest açılır. Döşemeli düzene dönmek için kapatın.",
+  "Window snapping": "Pencere yapışması",
+  "KDE services": "KDE servisleri",
+  "Starts kded6 at login (Bluetooth/network in KDE settings) and binds Super+Ctrl+I to KDE System Settings": "Girişte kded6'yı başlatır (KDE ayarlarında Bluetooth/ağ) ve Super+Ctrl+I ile KDE Sistem Ayarları'nı açar",
+  "Magnify icons": "İkonları büyüt",
+  "Bounce on launch": "Açılırken zıpla",
+  "Single dot indicator": "Tek nokta göstergesi",
+  "Show pin button": "Sabitleme butonunu göster"
 }

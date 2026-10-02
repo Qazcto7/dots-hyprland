@@ -100,6 +100,45 @@ ContentPage {
         }
     }
     ContentSection {
+        icon: "desktop_windows"
+        title: Translation.tr("Desktop mode")
+
+        ConfigSwitch {
+            buttonIcon: "select_window"
+            text: Translation.tr("Floating windows (like KDE Plasma)")
+            checked: Config.options.desktopMode.floatingWindows
+            onCheckedChanged: {
+                Config.options.desktopMode.floatingWindows = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("New windows open centered and floating instead of tiled. Turn off to go back to tiling.")
+            }
+        }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "border_outer"
+                text: Translation.tr("Window snapping")
+                checked: Config.options.desktopMode.snapping
+                onCheckedChanged: {
+                    Config.options.desktopMode.snapping = checked;
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "settings_applications"
+                text: Translation.tr("KDE services")
+                checked: Config.options.desktopMode.kdeServices
+                onCheckedChanged: {
+                    Config.options.desktopMode.kdeServices = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Starts kded6 at login (Bluetooth/network in KDE settings) and binds Super+Ctrl+I to KDE System Settings")
+                }
+            }
+        }
+    }
+
+    ContentSection {
         icon: "call_to_action"
         title: Translation.tr("Dock")
 

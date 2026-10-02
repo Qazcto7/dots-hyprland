@@ -322,6 +322,12 @@ Singleton {
                 property string code: "0;P;d;1;0l;10;0o;2;1b;0"
             }
 
+            property JsonObject desktopMode: JsonObject {
+                property bool floatingWindows: true // Plasma-like: windows float instead of tiling
+                property bool snapping: true // Snap floating windows to edges/each other
+                property bool kdeServices: true // Start kded6, SUPER+CTRL+I opens KDE System Settings
+            }
+
             property JsonObject dock: JsonObject {
                 property bool enable: true
                 property bool monochromeIcons: false
