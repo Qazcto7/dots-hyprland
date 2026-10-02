@@ -33,3 +33,4 @@ SETUVAR fish_pager_color_prefix:cyan\x1e\x2d\x2dbold\x1e\x2d\x2dunderline
 SETUVAR fish_pager_color_progress:brwhite\x1e\x2d\x2dbackground\x3dcyan
 SETUVAR fish_pager_color_selected_background:\x2dr
 SETUVAR fish_prompt_pwd_dir_length:1
+SETUVAR pure_shorten_window_title_current_directory_length:0
