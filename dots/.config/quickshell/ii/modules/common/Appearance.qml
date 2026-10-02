@@ -15,6 +15,11 @@ Singleton {
     property QtObject sizes
     property string syntaxHighlightingTheme
 
+    // macOS-style top bar: thin, flush to the screen edge, translucent, no grouping pills
+    readonly property bool barMacStyle: (Config.options?.bar.macStyle ?? true) && !(Config.options?.bar.vertical ?? false)
+    readonly property int barCornerStyle: barMacStyle ? 2 : (Config.options?.bar.cornerStyle ?? 0)
+    readonly property bool barBorderless: barMacStyle || (Config.options?.bar.borderless ?? false)
+
     // Transparency. The quadratic functions were derived from analysis of hand-picked transparency values.
     ColorQuantizer {
         id: wallColorQuant
@@ -385,8 +390,8 @@ Singleton {
     }
 
     sizes: QtObject {
-        property real baseBarHeight: 40
-        property real barHeight: Config.options.bar.cornerStyle === 1 ? 
+        property real baseBarHeight: root.barMacStyle ? 34 : 40
+        property real barHeight: root.barCornerStyle === 1 ? 
             (baseBarHeight + root.sizes.hyprlandGapsOut * 2) : baseBarHeight
         property real barCenterSideModuleWidth: Config.options?.bar.verbose ? 360 : 140
         property real barCenterSideModuleWidthShortened: 280

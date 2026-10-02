@@ -27,7 +27,7 @@ Item { // Bar content region
 
     // Background shadow
     Loader {
-        active: Config.options.bar.showBackground && Config.options.bar.cornerStyle === 1 && Config.options.bar.floatStyleShadow
+        active: Config.options.bar.showBackground && Appearance.barCornerStyle === 1 && Config.options.bar.floatStyleShadow
         anchors.fill: barBackground
         sourceComponent: StyledRectangularShadow {
             anchors.fill: undefined // The loader's anchors act on this, and this should not have any anchor
@@ -39,12 +39,25 @@ Item { // Bar content region
         id: barBackground
         anchors {
             fill: parent
-            margins: Config.options.bar.cornerStyle === 1 ? (Appearance.sizes.hyprlandGapsOut) : 0 // idk why but +1 is needed
+            margins: Appearance.barCornerStyle === 1 ? (Appearance.sizes.hyprlandGapsOut) : 0 // idk why but +1 is needed
         }
-        color: Config.options.bar.showBackground ? Appearance.colors.colLayer0 : "transparent"
-        radius: Config.options.bar.cornerStyle === 1 ? Appearance.rounding.windowRounding : 0
-        border.width: Config.options.bar.cornerStyle === 1 ? 1 : 0
+        color: !Config.options.bar.showBackground ? "transparent"
+            : Appearance.barMacStyle ? ColorUtils.transparentize(Appearance.colors.colLayer0, 0.25) // translucent + blurred, like macOS
+            : Appearance.colors.colLayer0
+        radius: Appearance.barCornerStyle === 1 ? Appearance.rounding.windowRounding : 0
+        border.width: Appearance.barCornerStyle === 1 ? 1 : 0
         border.color: Appearance.colors.colLayer0Border
+    }
+    Rectangle { // macOS-style hairline under the bar
+        visible: Appearance.barMacStyle && Config.options.bar.showBackground
+        anchors {
+            left: barBackground.left
+            right: barBackground.right
+            bottom: Config.options.bar.bottom ? undefined : barBackground.bottom
+            top: Config.options.bar.bottom ? barBackground.top : undefined
+        }
+        height: 1
+        color: ColorUtils.transparentize(Appearance.colors.colOutlineVariant, 0.4)
     }
 
     FocusedScrollMouseArea { // Left side | scroll to change brightness
@@ -125,7 +138,7 @@ Item { // Bar content region
         }
 
         VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
+            visible: Appearance.barBorderless
         }
 
         BarGroup {
@@ -151,7 +164,7 @@ Item { // Bar content region
         }
 
         VerticalBarSeparator {
-            visible: Config.options?.bar.borderless
+            visible: Appearance.barBorderless
         }
 
         MouseArea {

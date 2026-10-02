@@ -11,7 +11,7 @@ import Quickshell.Hyprland
 
 Item {
     id: root
-    property bool borderless: Config.options.bar.borderless
+    property bool borderless: Appearance.barBorderless
     readonly property MprisPlayer activePlayer: MprisController.activePlayer
     readonly property string cleanedTitle: StringUtils.cleanMusicTitle(activePlayer?.trackTitle) || Translation.tr("No media")
 

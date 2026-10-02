@@ -10,7 +10,7 @@ import Quickshell.Services.UPower
 
 Item {
     id: root
-    property bool borderless: Config.options.bar.borderless
+    property bool borderless: Appearance.barBorderless
     implicitWidth: rowLayout.implicitWidth + rowLayout.spacing * 2
     implicitHeight: rowLayout.implicitHeight
 

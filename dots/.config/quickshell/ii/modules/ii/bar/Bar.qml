@@ -62,7 +62,7 @@ Scope {
 
                 exclusionMode: ExclusionMode.Ignore
                 exclusiveZone: (barRoot.autoHideActive && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.fullscreenActive)) ? 0 :
-                    Appearance.sizes.baseBarHeight + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
+                    Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
                 mask: Region {
@@ -159,7 +159,7 @@ Scope {
                             bottom: undefined
                         }
                         height: Appearance.rounding.screenRounding
-                        active: showBarBackground && Config.options.bar.cornerStyle === 0 && !barRoot.fullscreenActive // Hug
+                        active: showBarBackground && Appearance.barCornerStyle === 0 && !barRoot.fullscreenActive // Hug
 
                         states: State {
                             name: "bottom"

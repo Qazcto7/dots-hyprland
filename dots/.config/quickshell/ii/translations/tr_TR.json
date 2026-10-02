@@ -653,5 +653,8 @@
   "Change wallpaper": "Duvar kâğıdını değiştir",
   "Arrange icons": "Simgeleri düzenle",
   "Display settings": "Ekran ayarları",
-  "Move %1 items to trash": "%1 öğeyi çöpe taşı"
+  "Move %1 items to trash": "%1 öğeyi çöpe taşı",
+  "Style": "Stil",
+  "macOS-style bar": "macOS tarzı bar",
+  "Thin, flush to the screen edge and translucent. Overrides corner style and borderless.": "İnce, ekran kenarına yapışık ve yarı saydam. Köşe stili ve kenarsız ayarlarını geçersiz kılar."
 }

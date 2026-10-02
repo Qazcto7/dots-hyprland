@@ -20,7 +20,7 @@ Item {
     // Area kept free for the bar and the dock, taken from their real sizes so the
     // first icon row starts right under the bar (no unusable empty strip)
     readonly property real barSpace: (Config.options?.bar.vertical ?? false) ? 0
-        : Appearance.sizes.baseBarHeight + ((Config.options?.bar.cornerStyle ?? 0) === 1 ? Appearance.sizes.hyprlandGapsOut : 0) + 4
+        : Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0) + 4
     readonly property real dockSpace: ((Config.options?.dock.enable ?? false) && (Config.options?.dock.pinnedOnStartup ?? false))
         ? (Config.options?.dock.height ?? 60) + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut + 8 : 0
     readonly property bool barAtBottom: Config.options?.bar.bottom ?? false

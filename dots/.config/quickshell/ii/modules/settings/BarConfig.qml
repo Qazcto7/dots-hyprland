@@ -21,6 +21,22 @@ ContentPage {
     }
     
     ContentSection {
+        icon: "laptop_mac"
+        title: Translation.tr("Style")
+        ConfigSwitch {
+            buttonIcon: "laptop_mac"
+            text: Translation.tr("macOS-style bar")
+            checked: Config.options.bar.macStyle
+            onCheckedChanged: {
+                Config.options.bar.macStyle = checked;
+            }
+            StyledToolTip {
+                text: Translation.tr("Thin, flush to the screen edge and translucent. Overrides corner style and borderless.")
+            }
+        }
+    }
+
+    ContentSection {
         icon: "spoke"
         title: Translation.tr("Positioning")
 
