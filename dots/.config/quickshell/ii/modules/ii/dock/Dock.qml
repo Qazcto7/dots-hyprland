@@ -35,7 +35,16 @@ Scope { // Scope
             screen: modelData
             visible: !GlobalStates.screenLocked
 
-            property bool reveal: root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || (!ToplevelManager.activeToplevel?.activated)
+            // macOS-like: while a window is fullscreen on this screen, the dock hides and slides in
+            // when the mouse reaches the bottom edge (drawn above the fullscreen window).
+            readonly property HyprlandMonitor hyprMonitor: Hyprland.monitorFor(dockRoot.screen)
+            readonly property bool fullscreenActive: (hyprMonitor?.activeWorkspace?.toplevels?.values ?? []).some(t => t.wayland?.fullscreen)
+            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || fullscreenActive
+            WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
+
+            property bool reveal: fullscreenActive
+                ? (dockMouseArea.containsMouse || dockApps.requestDockShow)
+                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || (!ToplevelManager.activeToplevel?.activated))
 
             anchors {
                 bottom: true
@@ -43,7 +52,7 @@ Scope { // Scope
                 right: true
             }
 
-            exclusiveZone: root.pinned ? implicitHeight - root.headroom - (Appearance.sizes.hyprlandGapsOut) - (Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut) : 0
+            exclusiveZone: (root.pinned && !fullscreenActive) ? implicitHeight - root.headroom - (Appearance.sizes.hyprlandGapsOut) - (Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut) : 0
 
             implicitWidth: dockBackground.implicitWidth
             WlrLayershell.namespace: "quickshell:dock"
@@ -61,7 +70,7 @@ Scope { // Scope
                 height: parent.height
                 anchors {
                     top: parent.top
-                    topMargin: dockRoot.reveal ? 0 : Config.options?.dock.hoverToReveal ? (dockRoot.implicitHeight - Config.options.dock.hoverRegionHeight) : (dockRoot.implicitHeight + 1)
+                    topMargin: dockRoot.reveal ? 0 : dockRoot.hoverRevealEnabled ? (dockRoot.implicitHeight - Config.options.dock.hoverRegionHeight) : (dockRoot.implicitHeight + 1)
                     horizontalCenter: parent.horizontalCenter
                 }
                 implicitWidth: dockHoverRegion.implicitWidth + Appearance.sizes.elevationMargin * 2

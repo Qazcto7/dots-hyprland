@@ -33,7 +33,7 @@ hl.config({
 -- Maximize (button and double-click) calls desktop_toggle_maximize() from desktop_mode.lua,
 -- which needs to know how tall the bar above the window is.
 DESKTOP_TITLEBAR_HEIGHT = 36
-DESKTOP_TITLEBAR_EXCLUDED = { ["firefox"] = true, ["org.mozilla.firefox"] = true }
+DESKTOP_TITLEBAR_EXCLUDED = {}
 
 -- Right alignment: the first button added is the rightmost one.
 local button_bg = "rgba(ffffff1f)"
@@ -65,6 +65,5 @@ hl.plugin.hyprbars.add_button({
     action = [[sleep 0.3; hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })']],
 })
 
--- Apps that already draw their own title bar buttons (client-side decorations).
--- Without this they would show two sets of buttons.
-hl.window_rule({ match = { class = "^(firefox|org.mozilla.firefox)$" }, ["hyprbars:no_bar"] = true })
+-- Firefox uses these title bars too (its own minimize button cannot work on Hyprland).
+-- In Firefox set about:config > browser.tabs.inTitlebar = 0 so it does not draw its own buttons.

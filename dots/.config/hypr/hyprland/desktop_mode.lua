@@ -87,12 +87,13 @@ local function geometricMaximizeToggle(win)
     maximizedGeometry[key] = { x = win.at.x, y = win.at.y, w = win.size.x, h = win.size.y }
     -- Resize first: Hyprland resizes floating windows around their center and keeps them on
     -- screen, which would shift an already-moved window. Then move to the exact position.
+    -- No gap at the top: the window (with its title bar) sits right under the top bar
     hl.dispatch(hl.dsp.window.resize({
         x = math.floor(areaW - 2 * (gap + border)),
-        y = math.floor(areaH - 2 * (gap + border) - bar),
+        y = math.floor(areaH - gap - 2 * border - bar),
         window = win,
     }))
-    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + gap + border + bar, window = win }))
+    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + border + bar, window = win }))
 end
 
 function desktop_toggle_maximize(win)
@@ -119,6 +120,10 @@ function desktop_toggle_maximize(win)
 end
 
 if mode.floating then
+    -- SUPER + D maximizes directly (smooth, no detour through Hyprland's maximized state)
+    hl.unbind("SUPER + D")
+    hl.bind("SUPER + D", function() desktop_toggle_maximize() end, { description = "Window: Maximize" })
+
     hl.on("window.fullscreen", function(win)
         if not win or not win.floating or win.fullscreen ~= FS_MAXIMIZED then return end
         -- Let Hyprland finish its own fullscreen change before undoing it

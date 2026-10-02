@@ -52,8 +52,16 @@ Scope {
                 }
                 property bool superShow: false
                 property bool mustShow: hoverRegion.containsMouse || superShow
+
+                // macOS-like: while a window is fullscreen on this screen, the bar hides and
+                // slides in when the mouse reaches the top edge (drawn above the fullscreen window).
+                readonly property HyprlandMonitor hyprMonitor: Hyprland.monitorFor(barRoot.screen)
+                readonly property bool fullscreenActive: (hyprMonitor?.activeWorkspace?.toplevels?.values ?? []).some(t => t.wayland?.fullscreen)
+                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || fullscreenActive
+                WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
+
                 exclusionMode: ExclusionMode.Ignore
-                exclusiveZone: (Config?.options.bar.autoHide.enable && (!mustShow || !Config?.options.bar.autoHide.pushWindows)) ? 0 :
+                exclusiveZone: (barRoot.autoHideActive && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.fullscreenActive)) ? 0 :
                     Appearance.sizes.baseBarHeight + (Config.options.bar.cornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
@@ -110,7 +118,7 @@ Scope {
                             left: parent.left
                             top: parent.top
                             bottom: undefined
-                            topMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.barHeight : 0
+                            topMargin: (barRoot.autoHideActive && !mustShow) ? -Appearance.sizes.barHeight : 0
                             bottomMargin: (Config.options.interactions.deadPixelWorkaround.enable && barRoot.anchors.bottom) * -1
                             rightMargin: (Config.options.interactions.deadPixelWorkaround.enable && barRoot.anchors.right) * -1
                         }
@@ -136,7 +144,7 @@ Scope {
                             PropertyChanges {
                                 target: barContent
                                 anchors.topMargin: 0
-                                anchors.bottomMargin: (Config?.options.bar.autoHide.enable && !mustShow) ? -Appearance.sizes.barHeight : 0
+                                anchors.bottomMargin: (barRoot.autoHideActive && !mustShow) ? -Appearance.sizes.barHeight : 0
                             }
                         }
                     }
@@ -151,7 +159,7 @@ Scope {
                             bottom: undefined
                         }
                         height: Appearance.rounding.screenRounding
-                        active: showBarBackground && Config.options.bar.cornerStyle === 0 // Hug
+                        active: showBarBackground && Config.options.bar.cornerStyle === 0 && !barRoot.fullscreenActive // Hug
 
                         states: State {
                             name: "bottom"
