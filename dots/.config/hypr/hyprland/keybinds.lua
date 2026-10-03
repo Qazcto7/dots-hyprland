@@ -190,8 +190,24 @@ hl.bind("SUPER + Apostrophe", hl.dsp.layout("splitratio +0.1"), { repeating = tr
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Window: Float/Tile" })
 hl.bind("SUPER + D", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }),
     { description = "Window: Maximize" })
-hl.bind("SUPER + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }),
-    { description = "Window: Fullscreen" })
+-- In Firefox, SUPER + F / SUPER + SHIFT + F go to the next / previous tab (Ctrl+Tab / Ctrl+Shift+Tab);
+-- Firefox's own fullscreen stays on F11. Everywhere else SUPER + F toggles fullscreen.
+local function isFirefox(win)
+    local class = string.lower((win and win.class) or "")
+    return class == "firefox" or class == "org.mozilla.firefox" or class == "firefox-esr" or class == "librewolf"
+end
+hl.bind("SUPER + F", function()
+    if isFirefox(hl.get_active_window()) then
+        hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL", key = "Tab" }))
+    else
+        hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
+    end
+end, { description = "Window: Fullscreen (Firefox: next tab)" })
+hl.bind("SUPER + SHIFT + F", function()
+    if isFirefox(hl.get_active_window()) then
+        hl.dispatch(hl.dsp.send_shortcut({ mods = "CTRL SHIFT", key = "Tab" }))
+    end
+end, { description = "Firefox: previous tab" })
 hl.bind("SUPER + ALT + F", hl.dsp.window.fullscreen_state({ internal = 0, client = 3, action = "toggle" }),
     { description = "Window: Fullscreen spoof" })
 hl.bind("SUPER + P", hl.dsp.window.pin(), { description = "Window: Pin" })
