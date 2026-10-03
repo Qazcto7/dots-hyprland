@@ -715,5 +715,7 @@
   "While a game or video is fullscreen, animations, blur and shadows are turned off for more FPS": "Bir oyun veya video tam ekranken daha fazla FPS için animasyonlar, bulanıklık ve gölgeler kapatılır",
   "Automatic game mode: on": "Otomatik oyun modu: açık",
   "Automatic game mode: off": "Otomatik oyun modu: kapalı",
-  "Game mode toggle": "Oyun modu düğmesi"
+  "Game mode toggle": "Oyun modu düğmesi",
+  "New window": "Yeni pencere",
+  "Close all windows (%1)": "Tüm pencereleri kapat (%1)"
 }

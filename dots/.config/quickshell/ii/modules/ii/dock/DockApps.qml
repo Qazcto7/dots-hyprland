@@ -20,7 +20,17 @@ Item {
 
     property Item lastHoveredButton: null
     property bool buttonHovered: false
-    property bool requestDockShow: previewPopup.show
+    property bool requestDockShow: previewPopup.show || appMenu.visible
+
+    // ---- Right-click menu of an app ----
+    property Item menuButton: null
+    function openMenu(button) {
+        root.menuButton = button;
+        appMenu.visible = true;
+    }
+    function closeMenu() {
+        appMenu.visible = false;
+    }
 
     // macOS-style magnification: cursor position over the app icons
     readonly property bool hovering: magnifyHoverHandler.hovered
@@ -75,7 +85,7 @@ Item {
         id: previewPopup
         property var appTopLevel: root.lastHoveredButton?.appToplevel
 
-        property bool shouldShow: (popupMouseArea.containsMouse || root.buttonHovered) && appTopLevel && appTopLevel.toplevels && appTopLevel.toplevels.length > 0
+        property bool shouldShow: !appMenu.visible && (popupMouseArea.containsMouse || root.buttonHovered) && appTopLevel && appTopLevel.toplevels && appTopLevel.toplevels.length > 0
 
         property bool show: false
         property real cachedCenterX: 0
@@ -232,6 +242,105 @@ Item {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    PopupWindow {
+        id: appMenu
+        visible: false
+        grabFocus: true // a click anywhere else closes it
+        color: "transparent"
+
+        readonly property var app: root.menuButton?.appToplevel ?? null
+        readonly property var entry: root.menuButton?.desktopEntry ?? null
+        readonly property var windows: appMenu.app?.toplevels ?? []
+        readonly property bool pinned: appMenu.app ? TaskbarApps.isPinned(appMenu.app.appId) : false
+
+        anchor {
+            item: root.menuButton
+            edges: Edges.Top
+            gravity: Edges.Top
+            adjustment: PopupAdjustment.Slide
+        }
+
+        implicitWidth: menuBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
+        implicitHeight: menuBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+
+        component MenuItem: RippleButtonWithIcon {
+            Layout.fillWidth: true
+            colBackground: "transparent"
+        }
+
+        StyledRectangularShadow {
+            target: menuBackground
+        }
+        Rectangle {
+            id: menuBackground
+            anchors.centerIn: parent
+            implicitWidth: Math.max(220, menuColumn.implicitWidth + 12)
+            implicitHeight: menuColumn.implicitHeight + 12
+            radius: Appearance.rounding.normal
+            color: Appearance.colors.colLayer0
+            border.width: 1
+            border.color: Appearance.colors.colLayer0Border
+
+            ColumnLayout {
+                id: menuColumn
+                anchors.fill: parent
+                anchors.margins: 6
+                spacing: 2
+
+                StyledText {
+                    Layout.fillWidth: true
+                    Layout.margins: 8
+                    text: appMenu.entry?.name ?? appMenu.app?.appId ?? ""
+                    font.pixelSize: Appearance.font.pixelSize.small
+                    color: Appearance.colors.colSubtext
+                    elide: Text.ElideRight
+                }
+                // The app's own actions from its .desktop file (e.g. "New Private Window")
+                Repeater {
+                    model: appMenu.entry?.actions ?? []
+                    delegate: MenuItem {
+                        required property var modelData
+                        materialIcon: "bolt"
+                        mainText: modelData.name
+                        onClicked: {
+                            root.closeMenu();
+                            modelData.execute();
+                        }
+                    }
+                }
+                MenuItem {
+                    visible: appMenu.entry !== null
+                    materialIcon: "add"
+                    mainText: Translation.tr("New window")
+                    onClicked: {
+                        root.closeMenu();
+                        appMenu.entry.execute();
+                    }
+                }
+                MenuItem {
+                    materialIcon: "keep"
+                    mainText: appMenu.pinned ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock")
+                    onClicked: {
+                        const id = appMenu.app.appId;
+                        root.closeMenu();
+                        TaskbarApps.togglePin(id);
+                    }
+                }
+                MenuItem {
+                    visible: appMenu.windows.length > 0
+                    materialIcon: "close"
+                    mainText: appMenu.windows.length > 1 ? Translation.tr("Close all windows (%1)").arg(appMenu.windows.length) : Translation.tr("Close")
+                    onClicked: {
+                        const windows = [...appMenu.windows];
+                        root.closeMenu();
+                        for (const toplevel of windows)
+                            toplevel.close();
                     }
                 }
             }

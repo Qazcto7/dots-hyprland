@@ -181,8 +181,44 @@ DockButton {
         root.desktopEntry?.execute();
     }
 
+    // Right click: app menu (new window, its own actions, pin, close)
     altAction: () => {
-        TaskbarApps.togglePin(appToplevel.appId);
+        appListRoot.openMenu(root);
+    }
+
+    // ---- Drag pinned apps sideways to reorder them ----
+    property real reorderShift: 0
+    z: reorderDrag.active ? 10 : 0
+    transform: Translate {
+        x: reorderDrag.active ? root.reorderShift : 0
+    }
+    DragHandler {
+        id: reorderDrag
+        target: null
+        enabled: !root.isSeparator && (root.appToplevel?.pinned ?? false)
+        yAxis.enabled: false
+        onActiveTranslationChanged: if (active) root.reorderShift = activeTranslation.x
+        onActiveChanged: {
+            if (active) {
+                appListRoot.closeMenu();
+                return;
+            }
+            const steps = Math.round(root.reorderShift / (root.baseWidth + 2));
+            root.reorderShift = 0;
+            if (steps !== 0)
+                root.movePin(steps);
+        }
+    }
+    function movePin(steps) {
+        const pins = [...Config.options.dock.pinnedApps];
+        const id = root.appToplevel.appId.toLowerCase();
+        const from = pins.findIndex(p => p.toLowerCase() === id);
+        if (from === -1) return;
+        const to = Math.max(0, Math.min(pins.length - 1, from + steps));
+        if (to === from) return;
+        const [moved] = pins.splice(from, 1);
+        pins.splice(to, 0, moved);
+        Config.options.dock.pinnedApps = pins;
     }
 
     contentItem: Loader {
