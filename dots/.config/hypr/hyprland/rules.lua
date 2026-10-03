@@ -60,7 +60,11 @@ hl.window_rule({match = {title = "^(Copying — Dolphin)$" }, move = {40, 80}})
 
 -- Tiling
 -- Ignore app maximize requests so restored window states do not override tiling.
-hl.window_rule({match = {class = ".*" }, suppress_event = "maximize"})
+-- Not with desktop mode's floating windows: there an app's own maximize button switches the
+-- window to windowed fullscreen (see desktop_mode.lua), which needs these requests.
+if not require("hyprland.desktop_mode_state").floating then
+    hl.window_rule({match = {class = ".*" }, suppress_event = "maximize"})
+end
 hl.window_rule({match = {class = "^dev\\.warp\\.Warp$" }, tile = true})
 
 -- Picture-in-Picture
