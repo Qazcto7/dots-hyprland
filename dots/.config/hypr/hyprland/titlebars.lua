@@ -10,11 +10,20 @@ end
 
 -- Title bars belong to the Plasma-like desktop mode: with floating windows turned off
 -- (stock end-4 tiling) the windows get no bars.
+-- GTK/Chromium/Electron apps that draw their own title bar (client-side decorations) read
+-- which window buttons to draw from this GNOME setting. With hyprbars every window gets our
+-- buttons, so theirs are turned off (':' = no buttons); otherwise e.g. Claude desktop or Chrome
+-- show a second row of minimize/maximize/close. Set a few seconds late so KDE's GTK settings
+-- sync (kded6, started at login) doesn't overwrite it; put back when title bars are off.
+local BUTTON_LAYOUT_KEY = "org.gnome.desktop.wm.preferences button-layout"
+
 local mode = require("hyprland.desktop_mode_state")
 if not mode.floating then
     hl.config({ plugin = { hyprbars = { enabled = false } } })
+    hl.exec_cmd("command -v gsettings >/dev/null && [ \"$(gsettings get " .. BUTTON_LAYOUT_KEY .. ")\" = \"':'\" ] && gsettings reset " .. BUTTON_LAYOUT_KEY)
     return
 end
+hl.exec_cmd("command -v gsettings >/dev/null && sleep 5 && gsettings set " .. BUTTON_LAYOUT_KEY .. " ':'")
 
 hl.config({
     plugin = {
@@ -42,14 +51,14 @@ hl.config({
 -- which needs to know how tall the bar above the window is.
 DESKTOP_TITLEBAR_HEIGHT = 36
 
--- Apps that draw their own title bar with minimize/maximize/close (client-side decorations)
--- get no hyprbars bar, otherwise they show two rows of buttons (e.g. Discord, Steam, Chrome,
--- VS Code, GNOME apps). Exact window classes, plus every org.gnome.* app.
+-- Apps that draw their own window buttons in their own interface (not through GTK, so the
+-- setting above doesn't remove them) get no hyprbars bar, otherwise they show two rows of
+-- buttons (Discord, Steam, VS Code...). Exact window classes. GTK/GNOME apps and Chromium-based
+-- browsers drop their buttons with the setting above and get a hyprbars bar like the others.
 local OWN_TITLEBAR_CLASSES = {
     "discord", "vesktop", "WebCord", "legcord", "armcord",
     "Spotify", "spotify", "steam", "obsidian", "Slack", "Element",
     "code", "code-oss", "Code", "codium", "VSCodium",
-    "google-chrome", "chromium", "brave-browser", "microsoft-edge", "vivaldi-stable",
 }
 DESKTOP_TITLEBAR_EXCLUDED = {}
 local escaped = {}
@@ -57,12 +66,12 @@ for _, class in ipairs(OWN_TITLEBAR_CLASSES) do
     DESKTOP_TITLEBAR_EXCLUDED[class] = true
     escaped[#escaped + 1] = (class:gsub("([%.%-])", "\\%1"))
 end
-hl.window_rule({ match = { class = "^(" .. table.concat(escaped, "|") .. "|org\\.gnome\\..*)$" }, ["hyprbars:no_bar"] = true })
+hl.window_rule({ match = { class = "^(" .. table.concat(escaped, "|") .. ")$" }, ["hyprbars:no_bar"] = true })
 
 -- Used by desktop_mode.lua (maximize/snap geometry): does this window have a hyprbars bar?
 function desktop_has_titlebar(win)
     local class = (win and win.class) or ""
-    return not (DESKTOP_TITLEBAR_EXCLUDED[class] or class:find("^org%.gnome%.") ~= nil)
+    return not DESKTOP_TITLEBAR_EXCLUDED[class]
 end
 
 -- Right alignment: the first button added is the rightmost one.

@@ -44,14 +44,13 @@ Singleton {
     // (apps that draw their own title bar). Keep both in sync.
     readonly property var ownTitlebarClasses: ["discord", "vesktop", "WebCord", "legcord", "armcord",
         "Spotify", "spotify", "steam", "obsidian", "Slack", "Element",
-        "code", "code-oss", "Code", "codium", "VSCodium",
-        "google-chrome", "chromium", "brave-browser", "microsoft-edge", "vivaldi-stable"]
+        "code", "code-oss", "Code", "codium", "VSCodium"]
     readonly property int titlebarHeight: 36 // DESKTOP_TITLEBAR_HEIGHT in titlebars.lua
     // Height of the hyprbars title bar drawn above this window (0 if it has none)
     function titlebarHeightOf(w) {
         if (!w?.floating || ((w.fullscreen ?? 0) !== 0) || !(Config.options?.desktopMode?.floatingWindows ?? true)) return 0;
         const cls = w.class ?? "";
-        if (root.ownTitlebarClasses.indexOf(cls) !== -1 || cls.startsWith("org.gnome.")) return 0;
+        if (root.ownTitlebarClasses.indexOf(cls) !== -1) return 0;
         return root.titlebarHeight;
     }
 
