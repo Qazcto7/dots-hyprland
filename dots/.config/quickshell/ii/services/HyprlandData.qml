@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import qs.modules.common
 
 /**
  * Provides access to some Hyprland data not available in Quickshell.Hyprland.
@@ -39,6 +40,42 @@ Singleton {
     // True if a maximized window is shown on the monitor with this name: Hyprland's maximize, or a
     // floating window spanning the screen width that starts at the very top (desktop mode's
     // maximize when it takes the bar's place). A maximized window dragged away stops counting.
+    // Window classes without a hyprbars title bar, same list as ~/.config/hypr/hyprland/titlebars.lua
+    // (apps that draw their own title bar). Keep both in sync.
+    readonly property var ownTitlebarClasses: ["discord", "vesktop", "WebCord", "legcord", "armcord",
+        "Spotify", "spotify", "steam", "obsidian", "Slack", "Element",
+        "code", "code-oss", "Code", "codium", "VSCodium",
+        "google-chrome", "chromium", "brave-browser", "microsoft-edge", "vivaldi-stable"]
+    readonly property int titlebarHeight: 36 // DESKTOP_TITLEBAR_HEIGHT in titlebars.lua
+    // Height of the hyprbars title bar drawn above this window (0 if it has none)
+    function titlebarHeightOf(w) {
+        if (!w?.floating || ((w.fullscreen ?? 0) !== 0) || !(Config.options?.desktopMode?.floatingWindows ?? true)) return 0;
+        const cls = w.class ?? "";
+        if (root.ownTitlebarClasses.indexOf(cls) !== -1 || cls.startsWith("org.gnome.")) return 0;
+        return root.titlebarHeight;
+    }
+
+    // True if a window (with its title bar) reaches into the strip of the given height at the top
+    // (fromTop) or bottom of the monitor, between x positions left..right (global coordinates; pass
+    // -Infinity..Infinity for the whole width). Fullscreen windows don't count (handled separately).
+    function hasWindowInStrip(monitorName, fromTop, stripHeight, left = -Infinity, right = Infinity) {
+        const mon = root.monitors.find(m => m.name === monitorName);
+        if (!mon) return false;
+        const workspaceIds = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
+        const rotated = ((mon.transform ?? 0) % 2) === 1;
+        const scale = mon.scale || 1;
+        const height = (rotated ? mon.width : mon.height) / scale;
+        const stripTop = fromTop ? mon.y : mon.y + height - stripHeight;
+        const stripBottom = stripTop + stripHeight;
+        return root.windowList.some(w => {
+            if (workspaceIds.indexOf(w.workspace?.id) === -1 || w.hidden || w.mapped === false) return false;
+            if (((w.fullscreen ?? 0) & 2) !== 0) return false;
+            const x = w.at?.[0] ?? 0, wd = w.size?.[0] ?? 0;
+            const y = (w.at?.[1] ?? 0) - root.titlebarHeightOf(w), ht = (w.size?.[1] ?? 0) + root.titlebarHeightOf(w);
+            return x < right && x + wd > left && y < stripBottom && y + ht > stripTop;
+        });
+    }
+
     function hasMaximizedOn(monitorName) {
         const mon = root.monitors.find(m => m.name === monitorName);
         if (!mon) return false;

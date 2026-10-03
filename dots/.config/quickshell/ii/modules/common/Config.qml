@@ -224,6 +224,7 @@ Singleton {
             }
 
             property JsonObject bar: JsonObject {
+                property bool hideOverWindows: true // Hide while a window (or its title bar) overlaps the bar
                 property JsonObject autoHide: JsonObject {
                     property bool enable: false
                     property int hoverRegionWidth: 2

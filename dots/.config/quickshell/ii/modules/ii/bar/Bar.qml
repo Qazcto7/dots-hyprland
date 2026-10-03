@@ -61,12 +61,20 @@ Scope {
                 readonly property bool maximizedActive: (Config?.options.desktopMode.maximizeHidesBar ?? true)
                     && !(Config?.options.bar.bottom ?? false) && HyprlandData.hasMaximizedOn(barRoot.screen?.name ?? "")
                 readonly property bool coveredActive: fullscreenActive || maximizedActive
-                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
+                // Plasma's "dodge windows": a window (or its title bar) reaching into the bar hides
+                // it; it slides in at the screen edge. The bar keeps its reserved space meanwhile, so
+                // only windows dragged or sized into it do this.
+                readonly property int reservedHeight: Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
+                readonly property bool overlappedActive: (Config?.options.bar.hideOverWindows ?? true)
+                    && HyprlandData.hasWindowInStrip(barRoot.screen?.name ?? "", !(Config?.options.bar.bottom ?? false), barRoot.reservedHeight)
+                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive || overlappedActive
                 WlrLayershell.layer: coveredActive ? WlrLayer.Overlay : WlrLayer.Top
 
                 exclusionMode: ExclusionMode.Ignore
-                exclusiveZone: (barRoot.autoHideActive && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
-                    Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
+                // Hidden only because a window overlaps it: keep the space (new windows still open below it)
+                readonly property bool configuredAutoHide: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
+                exclusiveZone: (barRoot.configuredAutoHide && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
+                    barRoot.reservedHeight
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
                 mask: Region {

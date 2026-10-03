@@ -34,6 +34,14 @@ ContentPage {
                 text: Translation.tr("Thin, flush to the screen edge and translucent. Overrides corner style and borderless.")
             }
         }
+        ConfigSwitch {
+            buttonIcon: "vertical_align_top"
+            text: Translation.tr("Hide when a window overlaps the bar")
+            checked: Config.options.bar.hideOverWindows
+            onCheckedChanged: {
+                Config.options.bar.hideOverWindows = checked;
+            }
+        }
     }
 
     ContentSection {
