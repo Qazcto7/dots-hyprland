@@ -57,6 +57,9 @@ if is_file_exists(HOME .. "/.config/hypr/custom/keybinds.lua") then
     require("custom.keybinds")
 end
 
+-- Keyboard layout from the Quickshell settings (after custom, so the settings app wins) --
+require("hyprland.keyboard")
+
 -- nwg-displays support --
 if is_file_exists(HOME .. "/.config/hypr/workspaces.lua") then
     require("workspaces")

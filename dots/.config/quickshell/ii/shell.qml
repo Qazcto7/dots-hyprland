@@ -28,6 +28,7 @@ ShellRoot {
         FirstRunExperience.load()
         ConflictKiller.load()
         DesktopMode.load()
+        KeyboardLayout.load()
         Cliphist.refresh()
         Wallpapers.load()
         Updates.load()

@@ -371,6 +371,11 @@ Singleton {
 
             property JsonObject language: JsonObject {
                 property string ui: "auto" // UI language. "auto" for system locale, or specific language code like "zh_CN", "en_US"
+                property JsonObject keyboard: JsonObject {
+                    property string layout: "auto" // "auto" follows the UI language, else xkb "layout" or "layout:variant" (e.g. "tr", "tr:f")
+                    property string secondLayout: "" // Optional second layout, "" for none
+                    property string switchKey: "grp:win_space_toggle" // xkb option to switch between the two layouts
+                }
                 property JsonObject translator: JsonObject {
                     property string engine: "auto" // Run `trans -list-engines` for available engines. auto should use google
                     property string targetLanguage: "auto" // Run `trans -list-all` for available languages

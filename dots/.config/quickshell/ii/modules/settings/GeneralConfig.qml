@@ -165,6 +165,66 @@ ContentPage {
             }
         }
         ContentSubsection {
+            title: Translation.tr("Keyboard layout")
+            tooltip: Translation.tr("Applied to Hyprland right away, no config editing needed.\n\"Same as interface language\" picks the layout of the language above.")
+
+            StyledComboBox {
+                buttonIcon: "keyboard"
+                textRole: "displayName"
+                model: [
+                    {
+                        displayName: Translation.tr("Same as interface language") + ` (${KeyboardLayout.layouts.find(l => l.value === KeyboardLayout.layoutForLocale(Config.options.language.ui))?.name ?? KeyboardLayout.layoutForLocale(Config.options.language.ui)})`,
+                        value: "auto"
+                    },
+                    ...KeyboardLayout.layouts.map(l => ({ displayName: l.name, value: l.value }))
+                ]
+                currentIndex: {
+                    const index = model.findIndex(item => item.value === Config.options.language.keyboard.layout);
+                    return index !== -1 ? index : 0;
+                }
+                onActivated: index => {
+                    Config.options.language.keyboard.layout = model[index].value;
+                }
+            }
+        }
+        ContentSubsection {
+            title: Translation.tr("Second keyboard layout")
+            tooltip: Translation.tr("Optional. Switch between the two layouts with the key combination on the right.")
+
+            ConfigRow {
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    buttonIcon: "translate"
+                    textRole: "displayName"
+                    model: [
+                        { displayName: Translation.tr("None"), value: "" },
+                        ...KeyboardLayout.layouts.map(l => ({ displayName: l.name, value: l.value }))
+                    ]
+                    currentIndex: {
+                        const index = model.findIndex(item => item.value === Config.options.language.keyboard.secondLayout);
+                        return index !== -1 ? index : 0;
+                    }
+                    onActivated: index => {
+                        Config.options.language.keyboard.secondLayout = model[index].value;
+                    }
+                }
+                StyledComboBox {
+                    Layout.fillWidth: true
+                    visible: Config.options.language.keyboard.secondLayout !== ""
+                    buttonIcon: "swap_horiz"
+                    textRole: "displayName"
+                    model: KeyboardLayout.switchKeys.map(k => ({ displayName: k.name, value: k.value }))
+                    currentIndex: {
+                        const index = model.findIndex(item => item.value === Config.options.language.keyboard.switchKey);
+                        return index !== -1 ? index : 0;
+                    }
+                    onActivated: index => {
+                        Config.options.language.keyboard.switchKey = model[index].value;
+                    }
+                }
+            }
+        }
+        ContentSubsection {
             title: Translation.tr("Generate translation with Gemini")
             tooltip: Translation.tr("You'll need to enter your Gemini API key first.\nType /key on the sidebar for instructions.")
 
