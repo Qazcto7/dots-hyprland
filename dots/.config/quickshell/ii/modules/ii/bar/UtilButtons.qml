@@ -120,9 +120,6 @@ Item {
                     color: gameModeButton.activeNow ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
                     opacity: gameModeButton.enabled_ ? 1 : 0.6
                 }
-                StyledToolTip {
-                    text: gameModeButton.enabled_ ? Translation.tr("Automatic game mode: on") : Translation.tr("Automatic game mode: off")
-                }
             }
         }
 
