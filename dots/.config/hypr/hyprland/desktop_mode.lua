@@ -243,6 +243,38 @@ if mode.floating then
             desktop_windowed_fullscreen(win, not wasWindowedFullscreen)
         end, { timeout = 30, type = "oneshot" })
     end)
+
+    -- New windows always open fully on screen, title bar included. Apps that remember a big
+    -- window size (Firefox, Electron apps like Claude or Discord...) would otherwise be centered
+    -- with their top, and the title bar above it, past the top of the screen. Too big windows
+    -- are shrunk to the free area (between bar and dock), the others only moved inside it.
+    local function fitOnScreen(win)
+        if not win or not win.address or not win.floating or (tonumber(win.fullscreen) or 0) ~= 0 then return end
+        if not win.at or not win.size then return end
+        if win.workspace and win.workspace.name == "special:minimized" then return end
+        local area = desktopWorkArea(win)
+        if not area or area.w < 200 or area.h < 150 then return end
+        local x, y = math.floor(win.at.x), math.floor(win.at.y)
+        local w, h = math.floor(win.size.x), math.floor(win.size.y)
+        local nw, nh = math.min(w, math.floor(area.w)), math.min(h, math.floor(area.h))
+        local nx = math.max(math.floor(area.x), math.min(x, math.floor(area.x + area.w) - nw))
+        local ny = math.max(math.floor(area.y), math.min(y, math.floor(area.y + area.h) - nh))
+        local resized = nw < w - 1 or nh < h - 1
+        if not resized and math.abs(nx - x) <= 1 and math.abs(ny - y) <= 1 then return end
+        -- Resize first (Hyprland resizes around the center), then move to the exact place
+        if resized then
+            hl.dispatch(hl.dsp.window.resize({ x = nw, y = nh, window = win }))
+        end
+        hl.dispatch(hl.dsp.window.move({ x = nx, y = ny, window = win }))
+    end
+
+    hl.on("window.open", function(win)
+        fitOnScreen(win)
+        -- Some apps set their real size only after the first frame: check once more
+        hl.timer(function()
+            if win.address then fitOnScreen(win) end
+        end, { timeout = 300, type = "oneshot" })
+    end)
 end
 
 -- Plasma/Windows-like snap zones: drag a floating window to the left/right screen edge for half
