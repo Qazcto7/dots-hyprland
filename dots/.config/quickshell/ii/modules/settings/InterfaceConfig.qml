@@ -300,6 +300,14 @@ ContentPage {
                 }
             }
         }
+        ConfigSwitch {
+            buttonIcon: "delete"
+            text: Translation.tr("Trash in the dock")
+            checked: Config.options.dock.showTrash
+            onCheckedChanged: {
+                Config.options.dock.showTrash = checked;
+            }
+        }
     }
 
     ContentSection {

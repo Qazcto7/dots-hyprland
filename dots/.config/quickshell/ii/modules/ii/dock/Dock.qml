@@ -42,8 +42,8 @@ Scope { // Scope
             WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 
             property bool reveal: fullscreenActive
-                ? (dockMouseArea.containsMouse || dockApps.requestDockShow)
-                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || (!ToplevelManager.activeToplevel?.activated))
+                ? (dockMouseArea.containsMouse || dockApps.requestDockShow || dockTrash.menuOpen)
+                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || (!ToplevelManager.activeToplevel?.activated))
 
             anchors {
                 bottom: true
@@ -183,6 +183,14 @@ Scope { // Scope
                                     text: "apps"
                                     color: Appearance.colors.colOnLayer0
                                 }
+                            }
+                            // macOS-like trash after the apps button
+                            DockTrash {
+                                id: dockTrash
+                                visible: Config.options?.dock.showTrash ?? true
+                                Layout.fillHeight: true
+                                topInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
+                                bottomInset: Appearance.sizes.hyprlandGapsOut + dockRow.padding
                             }
                         }
                     }

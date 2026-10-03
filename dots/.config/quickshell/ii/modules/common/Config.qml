@@ -355,6 +355,7 @@ Singleton {
                 property real magnificationRange: 2.5 // Falloff distance, in icon widths
                 property bool bounceOnLaunch: true // Icon bounces while app is starting
                 property bool singleDotIndicator: true // One dot per running app instead of window count
+                property bool showTrash: true // Trash at the end of the dock
                 property real backgroundOpacity: 0.72
                 property list<string> pinnedApps: [ // IDs of pinned entries
                     "org.kde.dolphin", "kitty",]

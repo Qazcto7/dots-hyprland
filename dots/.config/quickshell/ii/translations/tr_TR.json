@@ -724,5 +724,11 @@
   "No apps found for this file type": "Bu dosya türü için uygulama bulunamadı",
   "Move to desktop": "Masaüstüne taşı",
   "Maximized windows hide the bar": "Büyütülen pencerede bar gizlensin",
-  "A maximized window takes the whole height and the top bar hides; move the mouse to the top edge to show it": "Büyütülen pencere tüm yüksekliği kaplar ve üst bar gizlenir; göstermek için fareyi üst kenara götürün"
+  "A maximized window takes the whole height and the top bar hides; move the mouse to the top edge to show it": "Büyütülen pencere tüm yüksekliği kaplar ve üst bar gizlenir; göstermek için fareyi üst kenara götürün",
+  "Empty trash": "Çöpü boşalt",
+  "Permanently delete the %1 items in the trash? This can't be undone.": "Çöpteki %1 öğe kalıcı olarak silinsin mi? Bu geri alınamaz.",
+  "Open trash": "Çöpü aç",
+  "Empty trash (%1 items)": "Çöpü boşalt (%1 öğe)",
+  "Trash is empty": "Çöp boş",
+  "Trash in the dock": "Dock'ta çöp kutusu"
 }
