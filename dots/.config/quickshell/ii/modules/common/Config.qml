@@ -356,6 +356,7 @@ Singleton {
                 property bool bounceOnLaunch: true // Icon bounces while app is starting
                 property bool singleDotIndicator: true // One dot per running app instead of window count
                 property bool showTrash: true // Trash at the end of the dock
+                property bool hideOverWindows: true // Hide while a window overlaps the dock (slides in at the bottom edge)
                 property real backgroundOpacity: 0.72
                 property list<string> pinnedApps: [ // IDs of pinned entries
                     "org.kde.dolphin", "kitty",]

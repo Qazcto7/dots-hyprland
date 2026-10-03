@@ -308,6 +308,14 @@ ContentPage {
                 Config.options.dock.showTrash = checked;
             }
         }
+        ConfigSwitch {
+            buttonIcon: "vertical_align_bottom"
+            text: Translation.tr("Hide when a window overlaps the dock")
+            checked: Config.options.dock.hideOverWindows
+            onCheckedChanged: {
+                Config.options.dock.hideOverWindows = checked;
+            }
+        }
     }
 
     ContentSection {

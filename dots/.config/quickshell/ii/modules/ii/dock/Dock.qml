@@ -43,7 +43,7 @@ Scope { // Scope
             readonly property bool maximizedActive: (Config.options?.desktopMode.maximizeHidesBar ?? true)
                 && HyprlandData.hasMaximizedOn(dockRoot.screen?.name ?? "")
             readonly property bool coveredActive: fullscreenActive || maximizedActive
-            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || coveredActive
+            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || coveredActive || overlappedActive
             WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 
             // The dock also shows by itself on an empty workspace. That used to be "no window has
@@ -54,7 +54,31 @@ Scope { // Scope
             readonly property bool emptyWorkspace: !HyprlandData.windowList.some(w =>
                 w.workspace?.id === dockRoot.workspaceId && w.mapped !== false && w.hidden !== true)
 
-            property bool reveal: coveredActive
+            // Plasma's "dodge windows": a window over the dock (dragged down, or an app whose minimum
+            // size doesn't fit between bar and dock) hides it; it slides in at the bottom edge, like
+            // over maximized windows. The pinned dock keeps its reserved space, so this only happens
+            // for windows that really reach into it.
+            readonly property bool overlappedActive: {
+                if (!(Config.options?.dock.hideOverWindows ?? true)) return false;
+                const mon = HyprlandData.monitors.find(m => m.name === dockRoot.screen?.name);
+                if (!mon || !dockRoot.screen) return false;
+                const ids = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
+                // Where the dock body is when shown (global coordinates)
+                const bodyWidth = dockBackground.implicitWidth;
+                const left = mon.x + (dockRoot.width - bodyWidth) / 2;
+                const right = left + bodyWidth;
+                const bottom = mon.y + dockRoot.screen.height;
+                const top = bottom - dockRoot.implicitHeight + root.headroom + Appearance.sizes.elevationMargin;
+                return HyprlandData.windowList.some(w => {
+                    if (ids.indexOf(w.workspace?.id) === -1 || w.hidden || w.mapped === false) return false;
+                    if (((w.fullscreen ?? 0) & 2) !== 0) return false; // fullscreen is handled separately
+                    const x = w.at?.[0] ?? 0, y = w.at?.[1] ?? 0;
+                    const wd = w.size?.[0] ?? 0, ht = w.size?.[1] ?? 0;
+                    return x < right && x + wd > left && y < bottom && y + ht > top;
+                });
+            }
+
+            property bool reveal: (coveredActive || overlappedActive)
                 ? (dockMouseArea.containsMouse || dockApps.requestDockShow || dockTrash.menuOpen)
                 : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || dockRoot.emptyWorkspace)
 

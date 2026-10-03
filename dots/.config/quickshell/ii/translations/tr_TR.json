@@ -731,5 +731,6 @@
   "Empty trash (%1 items)": "Çöpü boşalt (%1 öğe)",
   "Trash is empty": "Çöp boş",
   "Trash in the dock": "Dock'ta çöp kutusu",
+  "Hide when a window overlaps the dock": "Bir pencere dock'un üstüne gelince gizle",
   "A maximized window takes the whole screen; the top bar and the dock hide and appear at the screen edges": "Büyütülen pencere tüm ekranı kaplar; üst bar ve dock gizlenir, ekran kenarlarında görünür"
 }
