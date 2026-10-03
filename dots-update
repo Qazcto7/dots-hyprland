@@ -70,10 +70,10 @@ if [ ${#files[@]} -eq 0 ] && [ -n "$downloads" ]; then
     done < <(find "$downloads" -maxdepth 1 -type f -name '*.patch' -printf '%T@ %p\0' | sort -z -n)
 fi
 
-# Subject of a patch, without "[PATCH n/m] " (long subjects are folded over several lines)
+# Subject of a patch as the commit will have it: git mailinfo unfolds long subjects, decodes
+# non-ASCII ones (e.g. "◇", stored encoded in the patch) and drops "[PATCH n/m]"
 patch_subject() {
-    awk '/^Subject: /{ s = $0; while ((getline l) > 0 && l ~ /^[ \t]/) s = s l; print s; exit }' "$1" \
-        | sed -E 's/^Subject: (\[[^]]*\] )?//; s/[[:space:]]+/ /g; s/ $//'
+    git mailinfo /dev/null /dev/null <"$1" 2>/dev/null | sed -n 's/^Subject: //p' | head -n 1
 }
 # Does the patch touch this repo? (at least one of its paths starts with a top folder of the repo)
 patch_belongs_here() {
@@ -85,8 +85,13 @@ patch_belongs_here() {
     return 1
 }
 
+# Patches that were replaced by later ones and must never be applied (exact subjects)
+obsolete_subjects='Title bars: no extra bar for the Claude desktop app
+Title bars: keep the title bar on the Claude desktop app
+Title bars: no second row of buttons in the Claude desktop app'
+
 applied=0 skipped=0 processed=()
-known_subjects=$(git log --format=%s -n 2000)
+known_subjects=$(printf '%s\n%s' "$obsolete_subjects" "$(git log --format=%s -n 2000)")
 for f in "${files[@]}"; do
     [ -f "$f" ] || { warn "Not found: $f"; continue; }
     name=$(basename -- "$f")
@@ -111,7 +116,8 @@ for f in "${files[@]}"; do
     fi
     if ! git am -3 --quiet "$f"; then
         git am --abort 2>/dev/null
-        die "$name doesn't apply (it was made for a different version of the files). Nothing of it was applied; send this message to Claude."
+        [ $applied -gt 0 ] && git log --oneline -n "$applied" | sed 's/^/    applied before it: /'
+        die "$name doesn't apply (it was made for a different version of the files). This patch was not applied; send this message to Claude."
     fi
     known_subjects=$(printf '%s\n%s' "$subject" "$known_subjects")
     applied=$((applied + 1)); processed+=("$f")
