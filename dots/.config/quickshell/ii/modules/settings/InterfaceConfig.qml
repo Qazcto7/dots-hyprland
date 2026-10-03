@@ -175,6 +175,17 @@ ContentPage {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "left_click"
+                text: Translation.tr("Click to focus")
+                checked: Config.options.desktopMode.clickToFocus
+                onCheckedChanged: {
+                    Config.options.desktopMode.clickToFocus = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("The keyboard goes to the window you click, not to the window under the mouse")
+                }
+            }
+            ConfigSwitch {
                 buttonIcon: "fit_screen"
                 text: Translation.tr("Maximized windows hide the bar")
                 checked: Config.options.desktopMode.maximizeHidesBar

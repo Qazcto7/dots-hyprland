@@ -12,6 +12,12 @@ if mode.floating then
     -- position, and a center rule would override the PiP / screen-share placement rules.)
     hl.window_rule({ match = { class = ".*" }, float = true })
     hl.config({ cursor = { no_warps = true } }) -- Plasma-like: focusing a window never moves the mouse
+    -- Plasma-like click to focus: the keyboard stays with the window that was clicked (or just
+    -- opened) instead of following the mouse, so e.g. a new terminal under a big window keeps the
+    -- focus when the mouse moves. Scrolling still goes to the window under the mouse.
+    if mode.click_to_focus then
+        hl.config({ input = { follow_mouse = 2 } })
+    end
 end
 
 -- Snap floating windows to screen edges and to each other while dragging
