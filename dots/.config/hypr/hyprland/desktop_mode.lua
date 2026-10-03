@@ -31,13 +31,17 @@ end
 -- KDE background services (Bluetooth / network integration for KDE settings modules)
 -- and a shortcut for KDE System Settings with all modules visible.
 if mode.kde_services then
+    -- kded6's own tray watcher (statusnotifierwatcher) is unloaded in this session: Quickshell's
+    -- bar provides the system tray. Only unloaded at runtime, so Plasma sessions are unaffected.
+    local KDED = "(pgrep -x kded6 >/dev/null || kded6) & sleep 3; "
+        .. "busctl --user call org.kde.kded6 /kded org.kde.kded6 unloadModule s statusnotifierwatcher >/dev/null 2>&1"
     -- At login it must wait for the session environment (WAYLAND_DISPLAY, D-Bus) to be ready.
     -- On a reload (e.g. the setting was just turned on) the session is running: start it now.
     if os.getenv("WAYLAND_DISPLAY") then
-        hl.exec_cmd("pgrep -x kded6 >/dev/null || kded6")
+        hl.exec_cmd(KDED)
     else
         hl.on("hyprland.start", function()
-            hl.exec_cmd("kded6")
+            hl.exec_cmd(KDED)
         end)
     end
     hl.bind("SUPER + CTRL + I", hl.dsp.exec_cmd("env XDG_CURRENT_DESKTOP=KDE systemsettings"),

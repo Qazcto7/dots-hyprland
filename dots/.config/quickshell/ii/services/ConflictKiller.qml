@@ -28,7 +28,10 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 const output = this.text;
-                const conflictingTrays = output.split(";")[0].trim().length > 0;
+                // Desktop mode's "KDE services" runs kded6 on purpose (with its tray watcher unloaded,
+                // see hyprland/desktop_mode.lua), so it is not a conflict then
+                const kdeServices = Config.options?.desktopMode?.kdeServices ?? true;
+                const conflictingTrays = !kdeServices && output.split(";")[0].trim().length > 0;
                 const conflictingNotifications = output.split(";")[1].trim().length > 0;
                 var openDialog = false;
                 if (conflictingTrays) {
