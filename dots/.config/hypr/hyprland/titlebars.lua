@@ -95,7 +95,7 @@ hl.plugin.hyprbars.add_button({
     size = 24,
     icon = "󰅀", -- nf-md-chevron_down
     -- The short delay lets hyprbars see the button release before the window disappears
-    action = [[hyprctl eval 'desktop_minimize(nil, 300)']],
+    action = [[hyprctl eval 'desktop_minimize(nil, 150)']],
 })
 
 -- Firefox uses these title bars too (its own minimize button cannot work on Hyprland).

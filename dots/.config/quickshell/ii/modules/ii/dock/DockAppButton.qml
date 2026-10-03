@@ -138,9 +138,10 @@ DockButton {
         return address ? `address:0x${address}` : "";
     }
     function minimize(toplevel) {
-        const target = root.windowTarget(toplevel);
-        if (target !== "")
-            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "special:minimized", follow = false, window = "${target}" })`);
+        const address = toplevel?.HyprlandToplevel?.address;
+        // Through Hyprland's Lua config (minimize.lua), which animates it like the title bar button
+        if (address)
+            Quickshell.execDetached(["hyprctl", "eval", `desktop_minimize_address("0x${address}")`]);
     }
     function bringToFront(toplevel) {
         const target = root.windowTarget(toplevel);
