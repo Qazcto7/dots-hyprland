@@ -23,4 +23,11 @@ hl.on("hyprland.start", function ()
 
     -- Cursor
     hl.exec_cmd("hyprctl setcursor Bibata-Modern-Classic 24")
+
+    -- CachyOS updater (cachy-update). Hyprland does not run XDG autostart entries, so its tray
+    -- icon is started here. Its update window is opened through gio/xdg-terminal-exec, which
+    -- needs to know the terminal: use kitty in Hyprland sessions (only if nothing is set yet;
+    -- this list is read only when XDG_CURRENT_DESKTOP=Hyprland, Plasma is not affected).
+    hl.exec_cmd([[f="${XDG_CONFIG_HOME:-$HOME/.config}/hyprland-xdg-terminals.list"; [ -e "$f" ] || printf 'kitty.desktop\n' > "$f"]])
+    hl.exec_cmd("command -v cachy-update >/dev/null && sleep 3 && cachy-update --tray")
 end)
