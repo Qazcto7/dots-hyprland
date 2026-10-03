@@ -51,7 +51,9 @@ Item {
         }
         implicitWidth: contentWidth
 
+        // Not while magnifying: the dock width must follow the icons right away
         Behavior on implicitWidth {
+            enabled: !root.hovering
             animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
         }
 

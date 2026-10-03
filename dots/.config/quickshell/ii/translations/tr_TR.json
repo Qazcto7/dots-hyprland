@@ -707,5 +707,6 @@
   "Super + Space": "Super + Boşluk",
   "Alt + Shift": "Alt + Shift",
   "Ctrl + Shift": "Ctrl + Shift",
-  "Caps Lock": "Caps Lock"
+  "Caps Lock": "Caps Lock",
+  "Don't change (Hyprland config)": "Değiştirme (Hyprland ayarı)"
 }

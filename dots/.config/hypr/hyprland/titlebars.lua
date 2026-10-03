@@ -8,6 +8,14 @@ if not (hl.plugin and hl.plugin.hyprbars) then
     return
 end
 
+-- Title bars belong to the Plasma-like desktop mode: with floating windows turned off
+-- (stock end-4 tiling) the windows get no bars.
+local mode = require("hyprland.desktop_mode_state")
+if not mode.floating then
+    hl.config({ plugin = { hyprbars = { enabled = false } } })
+    return
+end
+
 hl.config({
     plugin = {
         hyprbars = {
@@ -62,7 +70,8 @@ hl.plugin.hyprbars.add_button({
     fg_color = button_fg,
     size = 24,
     icon = "󰅀", -- nf-md-chevron_down
-    action = [[sleep 0.3; hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })']],
+    -- The short delay lets hyprbars see the button release before the window disappears
+    action = [[hyprctl eval 'desktop_minimize(nil, 300)']],
 })
 
 -- Firefox uses these title bars too (its own minimize button cannot work on Hyprland).

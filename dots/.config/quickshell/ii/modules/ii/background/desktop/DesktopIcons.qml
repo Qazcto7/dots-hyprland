@@ -119,14 +119,22 @@ Item {
 
     FolderListModel {
         id: folderModel
-        folder: root.desktopDir !== "" ? `file://${root.desktopDir}` : ""
+        folder: root.desktopDir !== "" ? root.fileUrl(root.desktopDir) : ""
         showDirs: true
         showDirsFirst: true
         showDotAndDotDot: false
         showHidden: false
         sortField: FolderListModel.Name
-        onCountChanged: root.relayout()
-        onStatusChanged: root.relayout()
+        // The model goes Loading -> Ready on every change in the folder. Icons are kept meanwhile
+        // (relayout ignores "Loading"), so they don't all get destroyed and recreated.
+        onCountChanged: relayoutTimer.restart()
+        onStatusChanged: relayoutTimer.restart()
+        onDataChanged: relayoutTimer.restart() // rename / replace without a count change
+    }
+    Timer {
+        id: relayoutTimer
+        interval: 50
+        onTriggered: root.relayout()
     }
 
     // ---------- Remembered positions ----------
@@ -155,10 +163,8 @@ Item {
     onColumnsChanged: relayout()
 
     function relayout() {
-        if (folderModel.status !== FolderListModel.Ready) {
-            root.items = [];
-            return;
-        }
+        if (folderModel.status !== FolderListModel.Ready)
+            return; // keep the current icons until the folder is read again
         const occupied = root.blockedCells(); // blocked cells count as occupied
         const result = [];
         const pending = [];
@@ -234,6 +240,11 @@ Item {
             root.positions = kept;
             root.savePositions();
         }
+    }
+
+    // Encoded, so names with spaces, # or % work in URLs (thumbnails, folder)
+    function fileUrl(path) {
+        return "file://" + path.split("/").map(part => encodeURIComponent(part)).join("/");
     }
 
     function cellX(col) { return root.sideMargin + col * root.cellWidth; }
@@ -354,6 +365,8 @@ Item {
         } else if (entry.type === "trash") {
             Quickshell.execDetached(["python3", "-c", root.restoreFromTrashScript, ...entry.paths]);
         } else if (entry.type === "rename") {
+            const current = root.itemByName[entry.newName];
+            root.moveSavedPosition(entry.newName, entry.oldName, current ? { col: current.col, row: current.row } : root.positions[entry.newName]);
             Quickshell.execDetached(["mv", "-n", "--", `${root.desktopDir}/${entry.newName}`, `${root.desktopDir}/${entry.oldName}`]);
         } else if (entry.type === "created") {
             // New folder/file or dropped copies: undo moves them to the trash (never deletes)
@@ -367,12 +380,16 @@ Item {
         Process {
             id: proc
             property var callback: null
+            property bool done: false
             stdout: StdioCollector {
                 onStreamFinished: {
+                    proc.done = true;
                     if (proc.callback) proc.callback(text);
-                    proc.destroy();
+                    Qt.callLater(() => proc.destroy());
                 }
             }
+            // A command that fails to start never ends its output stream
+            onRunningChanged: if (!proc.running && !proc.done) { proc.done = true; Qt.callLater(() => proc.destroy()); }
         }
     }
     function runCapture(command, callback) {
@@ -381,7 +398,7 @@ Item {
     }
 
     // Rejects names that would leave the desktop folder ("a/b", ".", "..")
-    readonly property string validNameFn: 'valid() { case "$1" in ""|.|..|*/*) notify-send -a Desktop "$2" "$1"; return 1;; esac; return 0; }'
+    readonly property string validNameFn: 'valid() { nl="$(printf "\\nx")"; nl="${nl%x}"; case "$1" in ""|.|..|*/*|*"$nl"*) notify-send -a Desktop "$2" "$1"; return 1;; esac; return 0; }'
 
     // ---------- Actions ----------
     // Text prompt with kdialog (KDE) or zenity; prints the answer, empty on cancel
@@ -431,10 +448,22 @@ Item {
             + '; new="$(ask "$3" "$4" "$2")"; [ -n "$new" ] && [ "$new" != "$2" ] && valid "$new" "$5" && [ ! -e "$1/$new" ] && mv -n -- "$1/$2" "$1/$new" && printf "%s" "$new"',
             "rename", root.desktopDir, item.name, Translation.tr("Rename"), Translation.tr("New name:"), Translation.tr("Invalid name")],
             out => {
-                if (out !== "")
-                    root.pushUndo({ type: "rename", label: Translation.tr("Rename"), oldName: item.name, newName: out });
+                if (out === "") return;
+                root.moveSavedPosition(item.name, out, { col: item.col, row: item.row });
+                root.pushUndo({ type: "rename", label: Translation.tr("Rename"), oldName: item.name, newName: out });
             });
     }
+    // The renamed file keeps the cell of the old name
+    function moveSavedPosition(oldName, newName, cell) {
+        const positions = Object.assign({}, root.positions);
+        delete positions[oldName];
+        if (cell && cell.col !== undefined) positions[newName] = { col: cell.col, row: cell.row };
+        root.positions = positions;
+        root.reservedNames[newName] = Date.now();
+        root.savePositions();
+        relayoutTimer.restart();
+    }
+
     function newFolder() {
         root.runCapture(["bash", "-c", root.askFn + '; ' + root.validNameFn
             + '; n="$(ask "$3" "$4" "$2")"; [ -n "$n" ] && valid "$n" "$5" && [ ! -e "$1/$n" ] && mkdir -- "$1/$n" && printf "%s" "$1/$n"',
@@ -475,7 +504,31 @@ Item {
     Connections {
         target: Hyprland
         function onRawEvent(event) {
+            // Closing Quick Look hands the keyboard back to a window; keep the selection then
+            if (Date.now() - root.quickLookClosedAt < 400) return;
             if (event.name === "activewindowv2" && event.data !== "" && event.data !== ",") {
+                root.clearSelection();
+                root.desktopActive = false;
+            }
+        }
+    }
+    // Hyprland sends no window event when the keyboard goes back to the window that was
+    // focused before the desktop, so also follow the desktop layer's real keyboard state.
+    readonly property bool windowActive: Window.active
+    onWindowActiveChanged: {
+        if (!root.windowActive && GlobalStates.quickLookItems.length === 0 && Date.now() - root.quickLookClosedAt > 400) {
+            root.clearSelection();
+            root.desktopActive = false;
+        }
+    }
+    property real quickLookClosedAt: 0
+    Connections {
+        target: GlobalStates
+        function onQuickLookItemsChanged() {
+            if (GlobalStates.quickLookItems.length === 0) root.quickLookClosedAt = Date.now();
+        }
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked) {
                 root.clearSelection();
                 root.desktopActive = false;
             }
@@ -554,6 +607,7 @@ Item {
                 .map(u => decodeURIComponent(u.toString()))
                 .filter(u => u.startsWith("file://"))
                 .map(u => u.slice("file://".length))
+                .filter(p => !p.includes("\n")) // the copy script reports paths line by line
                 .filter(p => p.substring(0, p.lastIndexOf("/")) !== root.desktopDir); // already on the desktop
             if (paths.length === 0)
                 return;

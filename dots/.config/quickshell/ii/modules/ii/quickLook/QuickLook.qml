@@ -27,6 +27,15 @@ Scope {
     function close() {
         GlobalStates.quickLookItems = [];
         GlobalStates.quickLookIndex = 0;
+        // Remove the generated PDF/video pictures
+        Quickshell.execDetached(["bash", "-c", 'rm -f -- "${1:?}"/preview-*.png', "quicklook-clean", root.cacheDir]);
+    }
+    // Never show a preview over the lock screen or reopen it after unlocking
+    Connections {
+        target: GlobalStates
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked && root.open) root.close();
+        }
     }
     function go(delta) {
         const n = GlobalStates.quickLookItems.length;
@@ -95,28 +104,50 @@ Scope {
 
     onItemChanged: root.reload()
 
-    // One Process per request, so a slow old request can never overwrite a newer preview
+    // One Process per request, so a slow old request can never overwrite a newer preview.
+    // Old requests are stopped when another file is shown, and every command has a time limit
+    // (a hung mount or a FIFO would otherwise keep "Loading…" and the process forever).
+    property var liveProcesses: []
     Component {
         id: captureProcess
         Process {
             id: proc
             property int request: 0
             property var callback: null
+            property bool done: false
+            function finish() {
+                if (proc.done) return;
+                proc.done = true;
+                root.liveProcesses = root.liveProcesses.filter(p => p !== proc);
+                Qt.callLater(() => proc.destroy());
+            }
             stdout: StdioCollector {
                 onStreamFinished: {
-                    if (proc.request === root.requestId && proc.callback)
+                    if (!proc.done && proc.request === root.requestId && proc.callback)
                         proc.callback(text);
-                    proc.destroy();
+                    proc.finish();
                 }
             }
+            // Also covers a command that failed to start (its output stream never ends)
+            onRunningChanged: if (!proc.running) proc.finish()
         }
     }
     function run(command, callback) {
-        const proc = captureProcess.createObject(root, { command: command, request: root.requestId, callback: callback });
+        const proc = captureProcess.createObject(root, {
+            command: ["timeout", "-k", "2", "15", ...command],
+            request: root.requestId,
+            callback: callback
+        });
+        root.liveProcesses = root.liveProcesses.concat([proc]);
         proc.running = true;
+    }
+    function stopAll() {
+        for (const proc of root.liveProcesses)
+            proc.running = false;
     }
 
     function reload() {
+        root.stopAll();
         root.requestId++;
         root.previewText = "";
         root.folderEntries = [];
@@ -126,6 +157,8 @@ Scope {
         const item = root.item;
         if (!item) return;
         const path = item.path;
+        // Not root.kind: this runs from onItemChanged, before that binding has caught up
+        const kind = root.kindOf(item);
 
         root.run(["stat", "-L", "-c", "%s|%Y", path], out => {
             const [size, mtime] = out.trim().split("|");
@@ -136,9 +169,9 @@ Scope {
             root.details = parts.join("  ·  ");
         });
 
-        root.loading = root.kind !== "image" && root.kind !== "audio" && root.kind !== "other";
+        root.loading = kind !== "image" && kind !== "audio" && kind !== "other";
         const out = `${root.cacheDir}/preview-${root.requestId}.png`;
-        switch (root.kind) {
+        switch (kind) {
         case "text":
             root.run(["head", "-c", "200000", path], text => {
                 root.previewText = text;

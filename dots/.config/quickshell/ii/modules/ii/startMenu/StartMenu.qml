@@ -15,15 +15,29 @@ import qs.modules.common.widgets
 Scope {
     id: root
 
+    // The screen is picked when the menu opens (the focused one, i.e. where the dock button or
+    // ALT+F1 was used) and kept, so it doesn't jump when focus follows the mouse
+    property var openScreen: null
+    Connections {
+        target: GlobalStates
+        function onStartMenuOpenChanged() {
+            root.openScreen = GlobalStates.startMenuOpen
+                ? (Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0])
+                : null;
+        }
+    }
+
     Loader {
         id: panelLoader
-        active: GlobalStates.startMenuOpen
+        active: GlobalStates.startMenuOpen && root.openScreen !== null
 
         sourceComponent: PanelWindow {
             id: panelWindow
             exclusiveZone: 0
+            screen: root.openScreen
             WlrLayershell.namespace: "quickshell:startMenu"
-            WlrLayershell.layer: WlrLayer.Top
+            // Overlay: a Top layer would be hidden behind a fullscreen window while taking the keyboard
+            WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
             color: "transparent"
 

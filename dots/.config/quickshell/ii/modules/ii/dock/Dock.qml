@@ -68,13 +68,16 @@ Scope { // Scope
             // Must be a direct child bound to dockMouseArea's position: Region only follows its
             // item's own x/y/size, so an item nested inside the sliding MouseArea kept a stale
             // mask after reveal/hide (e.g. after leaving fullscreen) and the dock ignored the mouse.
+            // It follows the sliding dock body continuously (no jump by the headroom when reveal
+            // flips, which made the pointer leave/enter in a loop), but never shrinks above the
+            // bottom hover strip that reveals the dock.
             Item {
                 id: dockInputRegion
-                readonly property real cut: dockRoot.reveal ? root.headroom : 0
+                readonly property real strip: dockRoot.hoverRevealEnabled ? (Config.options?.dock.hoverRegionHeight ?? 2) : 0
                 x: dockMouseArea.x
-                y: dockMouseArea.y + cut
                 width: dockMouseArea.width
-                height: Math.max(0, dockMouseArea.height - cut)
+                y: Math.min(dockMouseArea.y + root.headroom, dockRoot.height - strip)
+                height: Math.max(0, dockRoot.height - y)
             }
 
             MouseArea {

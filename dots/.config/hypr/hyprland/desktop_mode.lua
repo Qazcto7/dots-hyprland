@@ -3,29 +3,14 @@
 --   ~/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua
 -- and runs `hyprctl reload`. Turning everything off gives the stock end-4 behavior.
 
-local defaults = { floating = true, snap = true, kde_services = true, alt_tab = true }
-
--- The file is only parsed for "key = true/false" pairs, never executed
-local mode = {}
-local file = io.open(HOME .. "/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua", "r")
-if file then
-    local text = file:read("*a") or ""
-    file:close()
-    for key, value in text:gmatch("([%w_]+)%s*=%s*(%a+)") do
-        if value == "true" then mode[key] = true elseif value == "false" then mode[key] = false end
-    end
-end
-for key, value in pairs(defaults) do
-    if mode[key] == nil then
-        mode[key] = value
-    end
-end
+local mode = require("hyprland.desktop_mode_state")
 
 -- Floating windows: new windows open centered and free-floating instead of tiled.
 -- SUPER + ALT + Space still toggles float/tile for a single window.
 if mode.floating then
+    -- (No global center rule: the floating layout already centers windows that don't ask for a
+    -- position, and a center rule would override the PiP / screen-share placement rules.)
     hl.window_rule({ match = { class = ".*" }, float = true })
-    hl.window_rule({ match = { class = ".*" }, center = true })
     hl.config({ cursor = { no_warps = true } }) -- Plasma-like: focusing a window never moves the mouse
 end
 
@@ -46,9 +31,15 @@ end
 -- KDE background services (Bluetooth / network integration for KDE settings modules)
 -- and a shortcut for KDE System Settings with all modules visible.
 if mode.kde_services then
-    hl.on("hyprland.start", function()
-        hl.exec_cmd("kded6")
-    end)
+    -- At login it must wait for the session environment (WAYLAND_DISPLAY, D-Bus) to be ready.
+    -- On a reload (e.g. the setting was just turned on) the session is running: start it now.
+    if os.getenv("WAYLAND_DISPLAY") then
+        hl.exec_cmd("pgrep -x kded6 >/dev/null || kded6")
+    else
+        hl.on("hyprland.start", function()
+            hl.exec_cmd("kded6")
+        end)
+    end
     hl.bind("SUPER + CTRL + I", hl.dsp.exec_cmd("env XDG_CURRENT_DESKTOP=KDE systemsettings"),
         { description = "App: KDE System Settings" })
 end
@@ -59,7 +50,9 @@ end
 if mode.alt_tab then
     hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"), { description = "Shell: Window switcher" })
     hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrev"), { description = "Shell: Window switcher (back)" })
-    hl.bind("ALT_L", hl.dsp.global("quickshell:altTabRelease"), { ignore_mods = true, non_consuming = true })
+    -- transparent: must not be shadowed by the ALT + Tab bind while Alt is still held
+    hl.bind("ALT_L", hl.dsp.global("quickshell:altTabRelease"), { ignore_mods = true, non_consuming = true, transparent = true })
+    hl.bind("ALT_R", hl.dsp.global("quickshell:altTabRelease"), { ignore_mods = true, non_consuming = true, transparent = true })
 end
 
 -- Plasma-like maximize for floating windows: the window is resized to fill the free area
@@ -70,16 +63,48 @@ end
 -- and in floating mode every Hyprland maximize (SUPER + D, an app's own maximize button) is
 -- converted to this one.
 local FS_MAXIMIZED = 1
+
+-- address -> { x, y, w, h (geometry before maximizing), mx, my (position while maximized) }.
+-- Kept in a file so it survives `hyprctl reload` (Quickshell reloads when settings change);
+-- window addresses stay the same for the whole session.
+local GEOMETRY_FILE = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/hypr-desktop-maximized-"
+    .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "default")
 local maximizedGeometry = {}
+do
+    local f = io.open(GEOMETRY_FILE, "r")
+    if f then
+        for line in f:lines() do
+            local addr, x, y, w, h, mx, my = line:match("^(%S+) (%-?%d+) (%-?%d+) (%d+) (%d+) (%-?%d+) (%-?%d+)$")
+            if addr then
+                maximizedGeometry[addr] = { x = tonumber(x), y = tonumber(y), w = tonumber(w), h = tonumber(h), mx = tonumber(mx), my = tonumber(my) }
+            end
+        end
+        f:close()
+    end
+end
+local function saveMaximizedGeometry()
+    local f = io.open(GEOMETRY_FILE, "w")
+    if not f then return end
+    for addr, g in pairs(maximizedGeometry) do
+        f:write(string.format("%s %d %d %d %d %d %d\n", addr, g.x, g.y, g.w, g.h, g.mx, g.my))
+    end
+    f:close()
+end
 
 local function geometricMaximizeToggle(win)
     local key = win.address
     local saved = maximizedGeometry[key]
     if saved then
         maximizedGeometry[key] = nil
-        hl.dispatch(hl.dsp.window.resize({ x = saved.w, y = saved.h, window = win }))
-        hl.dispatch(hl.dsp.window.move({ x = saved.x, y = saved.y, window = win }))
-        return
+        saveMaximizedGeometry()
+        -- Only restore if the window is still where maximizing put it. If it was dragged,
+        -- snapped or moved to another monitor since, maximize it again instead.
+        local at = win.at or { x = 0, y = 0 }
+        if math.abs(at.x - saved.mx) <= 4 and math.abs(at.y - saved.my) <= 4 then
+            hl.dispatch(hl.dsp.window.resize({ x = saved.w, y = saved.h, window = win }))
+            hl.dispatch(hl.dsp.window.move({ x = saved.x, y = saved.y, window = win }))
+            return
+        end
     end
 
     local mon = win.monitor
@@ -103,7 +128,9 @@ local function geometricMaximizeToggle(win)
     local areaW = pixelW / scale - reserved.left - reserved.right
     local areaH = pixelH / scale - reserved.top - reserved.bottom
 
-    maximizedGeometry[key] = { x = win.at.x, y = win.at.y, w = win.size.x, h = win.size.y }
+    local targetX, targetY = math.floor(areaX + gap + border), math.floor(areaY + border + bar)
+    maximizedGeometry[key] = { x = math.floor(win.at.x), y = math.floor(win.at.y), w = math.floor(win.size.x), h = math.floor(win.size.y), mx = targetX, my = targetY }
+    saveMaximizedGeometry()
     -- Resize first: Hyprland resizes floating windows around their center and keeps them on
     -- screen, which would shift an already-moved window. Then move to the exact position.
     -- No gap at the top: the window (with its title bar) sits right under the top bar
@@ -112,7 +139,7 @@ local function geometricMaximizeToggle(win)
         y = math.floor(areaH - gap - 2 * border - bar),
         window = win,
     }))
-    hl.dispatch(hl.dsp.window.move({ x = areaX + gap + border, y = areaY + border + bar, window = win }))
+    hl.dispatch(hl.dsp.window.move({ x = targetX, y = targetY, window = win }))
 end
 
 function desktop_toggle_maximize(win)
@@ -140,8 +167,9 @@ end
 
 -- Forget saved geometry of closed windows
 hl.on("window.close", function(win)
-    if win and win.address then
+    if win and win.address and maximizedGeometry[win.address] then
         maximizedGeometry[win.address] = nil
+        saveMaximizedGeometry()
     end
 end)
 

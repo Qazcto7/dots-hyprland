@@ -149,8 +149,10 @@ DockButton {
         // to the current workspace first
         const client = HyprlandData.windowByAddress[target.slice("address:".length)];
         if (client?.workspace?.name === "special:minimized") {
-            const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
-            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "${target}" })`);
+            const ws = HyprlandData.activeWorkspace;
+            // Named workspaces have negative ids, which Hyprland would read as a relative offset
+            const workspace = (ws?.id ?? 1) > 0 ? `${ws?.id ?? 1}` : `name:${ws.name}`;
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspace}", follow = false, window = "${target}" })`);
         }
         Hyprland.dispatch(`hl.dsp.focus({ window = "${target}" })`);
         // Focusing does not raise a floating window

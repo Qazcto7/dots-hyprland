@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import qs
 import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
@@ -19,6 +20,13 @@ Item {
 
     function close() {
         root.open = false;
+    }
+
+    Connections {
+        target: GlobalStates
+        function onScreenLockedChanged() {
+            if (GlobalStates.screenLocked) root.close();
+        }
     }
 
     Connections {
@@ -107,8 +115,11 @@ Item {
                     colBackground: "transparent"
                     materialIcon: modelData.icon
                     mainText: modelData.text
+                    // Keep keyboard focus on the desktop (Ctrl+Z, Delete... after using the menu)
+                    focusPolicy: Qt.NoFocus
                     onClicked: {
                         root.close();
+                        root.desktop.forceActiveFocus();
                         modelData.run();
                     }
                 }

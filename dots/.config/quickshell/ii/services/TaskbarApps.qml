@@ -8,13 +8,16 @@ import Quickshell.Wayland
 Singleton {
     id: root
 
+    // The dock lowercases app ids, so compare without case (a pin saved as "Code" is the dock's "code")
     function isPinned(appId) {
-        return Config.options.dock.pinnedApps.indexOf(appId) !== -1;
+        const wanted = (appId ?? "").toLowerCase();
+        return Config.options.dock.pinnedApps.some(id => id.toLowerCase() === wanted);
     }
 
     function togglePin(appId) {
         if (root.isPinned(appId)) {
-            Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.filter(id => id !== appId)
+            const wanted = appId.toLowerCase();
+            Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.filter(id => id.toLowerCase() !== wanted)
         } else {
             Config.options.dock.pinnedApps = Config.options.dock.pinnedApps.concat([appId])
         }

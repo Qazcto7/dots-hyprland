@@ -22,12 +22,16 @@ Singleton {
     readonly property bool floating: Config.options?.desktopMode.floatingWindows ?? true
     readonly property bool snap: Config.options?.desktopMode.snapping ?? true
     readonly property bool kdeServices: Config.options?.desktopMode.kdeServices ?? true
-    readonly property bool altTab: Config.options?.desktopMode.altTab ?? true
+    // The Alt+Tab switcher only exists in the "ii" panel family
+    readonly property bool altTab: (Config.options?.desktopMode.altTab ?? true) && (Config.options?.panelFamily ?? "ii") === "ii"
 
     readonly property string content: `return { floating = ${root.floating}, snap = ${root.snap}, kde_services = ${root.kdeServices}, alt_tab = ${root.altTab} }`
 
+    // Only the main shell writes the file. The settings app (a separate Quickshell process) also
+    // creates this singleton when it shows these options, but never calls load().
+    property bool active: false
     function load() {
-        // Referencing the singleton instantiates it; the timer does the first write.
+        root.active = true;
     }
 
     onContentChanged: applyTimer.restart()
@@ -35,12 +39,12 @@ Singleton {
     Timer {
         id: applyTimer
         interval: 300
-        running: Config.ready
+        running: Config.ready && root.active
         onTriggered: {
-            if (!Config.ready) return;
+            if (!Config.ready || !root.active) return;
             applyProc.running = false;
             applyProc.command = ["bash", "-c",
-                'mkdir -p "$(dirname "$1")" && if [ "$(cat "$1" 2>/dev/null)" != "$2" ]; then printf "%s\\n" "$2" > "$1" && hyprctl reload; fi',
+                'mkdir -p "$(dirname "$1")" && if [ "$(cat "$1" 2>/dev/null)" != "$2" ]; then printf "%s\\n" "$2" > "$1" && exit 10; fi',
                 "desktop-mode", root.filePath, root.content];
             applyProc.running = true;
         }
@@ -48,5 +52,9 @@ Singleton {
 
     Process {
         id: applyProc
+        // 10 = the file changed: reload Hyprland (shared and debounced with the other services)
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode === 10) HyprlandReload.request();
+        }
     }
 }

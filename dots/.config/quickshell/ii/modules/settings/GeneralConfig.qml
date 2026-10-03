@@ -173,6 +173,10 @@ ContentPage {
                 textRole: "displayName"
                 model: [
                     {
+                        displayName: Translation.tr("Don't change (Hyprland config)"),
+                        value: "system"
+                    },
+                    {
                         displayName: Translation.tr("Same as interface language") + ` (${KeyboardLayout.layouts.find(l => l.value === KeyboardLayout.layoutForLocale(Config.options.language.ui))?.name ?? KeyboardLayout.layoutForLocale(Config.options.language.ui)})`,
                         value: "auto"
                     },
@@ -180,7 +184,7 @@ ContentPage {
                 ]
                 currentIndex: {
                     const index = model.findIndex(item => item.value === Config.options.language.keyboard.layout);
-                    return index !== -1 ? index : 0;
+                    return index !== -1 ? index : 1;
                 }
                 onActivated: index => {
                     Config.options.language.keyboard.layout = model[index].value;
@@ -192,13 +196,16 @@ ContentPage {
             tooltip: Translation.tr("Optional. Switch between the two layouts with the key combination on the right.")
 
             ConfigRow {
+                // Needs a known first layout
+                enabled: Config.options.language.keyboard.layout !== "system"
                 StyledComboBox {
                     Layout.fillWidth: true
                     buttonIcon: "translate"
                     textRole: "displayName"
+                    // The first layout can't be the second one too
                     model: [
                         { displayName: Translation.tr("None"), value: "" },
-                        ...KeyboardLayout.layouts.map(l => ({ displayName: l.name, value: l.value }))
+                        ...KeyboardLayout.layouts.filter(l => l.value !== KeyboardLayout.primary).map(l => ({ displayName: l.name, value: l.value }))
                     ]
                     currentIndex: {
                         const index = model.findIndex(item => item.value === Config.options.language.keyboard.secondLayout);
@@ -210,7 +217,7 @@ ContentPage {
                 }
                 StyledComboBox {
                     Layout.fillWidth: true
-                    visible: Config.options.language.keyboard.secondLayout !== ""
+                    visible: Config.options.language.keyboard.secondLayout !== "" && Config.options.language.keyboard.secondLayout !== KeyboardLayout.primary
                     buttonIcon: "swap_horiz"
                     textRole: "displayName"
                     model: KeyboardLayout.switchKeys.map(k => ({ displayName: k.name, value: k.value }))

@@ -35,13 +35,40 @@ Scope {
     }
 
     function start(step) {
+        // A switch from a quick previous Alt+Tab may still be pending: do it now, and treat that
+        // window as the current one (the window list from hyprctl may not know about it yet)
+        let front = "";
+        if (switchTimer.running) {
+            switchTimer.stop();
+            const pending = root.pendingWindow;
+            root.pendingWindow = null;
+            if (pending) {
+                root.switchTo(pending);
+                front = pending.address;
+            }
+        }
+        const active = ToplevelManager.activeToplevel;
+        if (front === "" && active?.activated && active.HyprlandToplevel)
+            front = `0x${active.HyprlandToplevel.address}`;
+
         const list = root.collectWindows();
         if (list.length === 0) return;
+        const frontIndex = list.findIndex(w => w.address === front);
+        if (frontIndex > 0) list.unshift(list.splice(frontIndex, 1)[0]);
         root.windows = list;
-        root.index = step > 0 ? Math.min(1, list.length - 1) : list.length - 1;
+        // Start on the previous window; if no window is focused, the most recent one is the target
+        root.index = step > 0 ? (frontIndex !== -1 ? Math.min(1, list.length - 1) : 0) : list.length - 1;
+        root.screenName = Hyprland.focusedMonitor?.name ?? "";
+        root.hoverOrigin = Qt.point(-1, -1);
         root.active = true;
         showTimer.restart();
     }
+    // Fixed when the switcher opens: following the focused monitor live would recreate the
+    // window (and cancel the focus grab) when the mouse crosses to another screen
+    property string screenName: ""
+    // Hover only selects after the mouse really moved (the card appearing under a still cursor
+    // also sends hover events)
+    property point hoverOrigin: Qt.point(-1, -1)
 
     function step(delta) {
         if (!root.active) {
@@ -64,7 +91,10 @@ Scope {
     // active Hyprland keeps keyboard focus on the switcher and the chosen window would not get it.
     property var pendingWindow: null
     function commit() {
-        root.pendingWindow = root.selectedWindow;
+        let win = root.selectedWindow;
+        // The window may have closed while the switcher was open
+        if (win && !root.toplevelFor(win)) win = null;
+        root.pendingWindow = win;
         root.close();
         if (root.pendingWindow) switchTimer.restart();
     }
@@ -72,8 +102,10 @@ Scope {
         const target = `address:${win.address}`;
         if (win.workspace?.name === "special:minimized") {
             // Same as the dock: bring a minimized window back to the current workspace
-            const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
-            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "${target}" })`);
+            const ws = HyprlandData.activeWorkspace;
+            // Named workspaces have negative ids, which Hyprland would read as a relative offset
+            const workspace = (ws?.id ?? 1) > 0 ? `${ws?.id ?? 1}` : `name:${ws.name}`;
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspace}", follow = false, window = "${target}" })`);
         }
         Hyprland.dispatch(`hl.dsp.focus({ window = "${target}" })`);
         // Focusing does not raise a floating window; bring it in front of the others
@@ -127,7 +159,7 @@ Scope {
 
         sourceComponent: PanelWindow {
             id: panel
-            screen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
+            screen: Quickshell.screens.find(s => s.name === root.screenName) ?? Quickshell.screens[0]
             WlrLayershell.namespace: "quickshell:altTab"
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
@@ -193,7 +225,8 @@ Scope {
                                     id: preview
                                     anchors.fill: parent
                                     captureSource: root.toplevelFor(entry.modelData)
-                                    live: true
+                                    // Live previews cost a capture per frame each; with many windows only the selected one is live
+                                    live: entry.selected || root.windows.length <= 6
                                     constraintSize: Qt.size(entry.thumbWidth * 2, entry.thumbHeight * 2)
                                 }
                                 // Minimized windows may have no picture: show the app icon instead
@@ -232,7 +265,16 @@ Scope {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 // Only real mouse movement selects, not the card appearing under the cursor
-                                onPositionChanged: root.index = entry.index
+                                onPositionChanged: mouse => {
+                                    const p = entryMouse.mapToItem(null, mouse.x, mouse.y);
+                                    if (root.hoverOrigin.x < 0) {
+                                        root.hoverOrigin = p;
+                                        return;
+                                    }
+                                    if (Math.abs(p.x - root.hoverOrigin.x) + Math.abs(p.y - root.hoverOrigin.y) < 6)
+                                        return;
+                                    root.index = entry.index;
+                                }
                                 onClicked: {
                                     root.index = entry.index;
                                     root.commit();

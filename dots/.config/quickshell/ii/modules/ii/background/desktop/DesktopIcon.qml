@@ -77,9 +77,21 @@ Item {
     Behavior on y { enabled: !mouseArea.drag.active && !root.groupDragging; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
     z: (mouseArea.drag.active || followsGroup) ? 10 : 0
 
+    // A drag that is cut short (icon removed mid-drag) must not leave the others offset
+    Component.onDestruction: {
+        if (root.desktop && root.item && root.desktop.groupDragLeader === root.item.name) {
+            root.desktop.groupDragLeader = "";
+            root.desktop.groupDragDX = 0;
+            root.desktop.groupDragDY = 0;
+        }
+    }
+
+    // Only a real drag moves the icon, not a click while it is still animating into place
+    property bool wasDragged: false
     Connections {
         target: mouseArea.drag
         function onActiveChanged() {
+            if (mouseArea.drag.active) root.wasDragged = true;
             if (mouseArea.drag.active && root.selected && root.desktop.selectedNames.length > 1) {
                 root.desktop.groupDragDX = 0;
                 root.desktop.groupDragDY = 0;
@@ -114,7 +126,7 @@ Item {
                 anchors.fill: parent
                 visible: !root.isImage
                 implicitSize: 52
-                source: root.iconName.startsWith("/") ? `file://${root.iconName}` : Quickshell.iconPath(root.iconName, "application-x-executable")
+                source: root.iconName.startsWith("/") ? root.desktop.fileUrl(root.iconName) : Quickshell.iconPath(root.iconName, "application-x-executable")
             }
             Image {
                 anchors.fill: parent
@@ -123,7 +135,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 sourceSize.width: 104
                 sourceSize.height: 104
-                source: root.isImage ? `file://${root.item.path}` : ""
+                source: (root.isImage && root.item.path !== "") ? root.desktop.fileUrl(root.item.path) : ""
             }
         }
 
@@ -169,6 +181,8 @@ Item {
                 root.desktop.open(root.item);
         }
         onReleased: {
+            const dragged = root.wasDragged;
+            root.wasDragged = false;
             if (root.desktop.groupDragLeader === root.item.name) {
                 const dCol = Math.round((root.x - root.homeX) / root.desktop.cellWidth);
                 const dRow = Math.round((root.y - root.homeY) / root.desktop.cellHeight);
@@ -181,7 +195,7 @@ Item {
                 root.y = Qt.binding(() => root.homeY + (root.followsGroup ? root.desktop.groupDragDY : 0));
                 return;
             }
-            if (drag.active || root.x !== root.homeX || root.y !== root.homeY) {
+            if (dragged) {
                 root.desktop.moveItemTo(root.item.name, root.x, root.y);
                 // If nothing changed, snap back
                 root.x = Qt.binding(() => root.homeX + (root.followsGroup ? root.desktop.groupDragDX : 0));

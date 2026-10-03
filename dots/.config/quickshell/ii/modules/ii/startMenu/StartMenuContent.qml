@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 import qs
 import qs.services
 import qs.modules.common
@@ -90,9 +91,16 @@ Item {
         Config.options.startMenu.favorites = isFavorite(id) ? favs.filter(f => f !== id) : favs.concat([id]);
     }
 
-    // Dock pins match running windows by their class, which is the .desktop StartupWMClass
-    // when an app sets one (e.g. org.mozilla.firefox.desktop -> "firefox"); otherwise the desktop id.
+    // The id the dock uses for this app (its window class / Wayland app id, lowercased).
+    // An existing pin or a running window of the app decides; otherwise the .desktop
+    // StartupWMClass when the app sets one (e.g. "firefox"), else the desktop id.
     function dockId(entry) {
+        const ids = [entry?.id, entry?.startupClass].filter(s => !!s).map(s => s.toLowerCase());
+        if (ids.length === 0) return "";
+        const pinned = (Config.options?.dock.pinnedApps ?? []).find(p => ids.indexOf(p.toLowerCase()) !== -1);
+        if (pinned) return pinned.toLowerCase();
+        const running = ToplevelManager.toplevels.values.find(t => ids.indexOf((t.appId ?? "").toLowerCase()) !== -1);
+        if (running) return running.appId.toLowerCase();
         return (entry?.startupClass || entry?.id || "").toLowerCase();
     }
 
@@ -150,10 +158,13 @@ Item {
                     appList.decrementCurrentIndex();
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    root.launch(root.shownApps[appList.currentIndex]);
+                    if (contextMenu.visible) contextMenu.close();
+                    else root.launch(root.shownApps[appList.currentIndex]);
                     event.accepted = true;
                 } else if (event.key === Qt.Key_Escape) {
-                    root.closed();
+                    // Escape first closes the right-click menu, then the start menu
+                    if (contextMenu.visible) contextMenu.close();
+                    else root.closed();
                     event.accepted = true;
                 }
             }

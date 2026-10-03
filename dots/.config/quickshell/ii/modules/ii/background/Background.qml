@@ -228,12 +228,15 @@ Variants {
             }
 
             // Desktop icons (Plasma-like desktop mode), only on the first screen
+            // Kept loaded while the screen is locked (only hidden), so locking doesn't kill a
+            // running copy or rename, or lose the undo history.
             readonly property bool showDesktopIcons: (Config.options?.desktopMode.desktopIcons ?? true)
-                && !GlobalStates.screenLocked && bgRoot.modelData === Quickshell.screens[0]
+                && bgRoot.modelData === Quickshell.screens[0]
             Loader {
                 id: desktopIconsLoader
                 anchors.fill: parent
                 active: parent.showDesktopIcons
+                visible: !GlobalStates.screenLocked
                 sourceComponent: DesktopIcons {
                     // Icons never go under these background widgets
                     obstacleItems: [clockWidgetLoader.item, weatherWidgetLoader.item]
@@ -302,6 +305,7 @@ Variants {
             Loader {
                 anchors.fill: parent
                 active: desktopIconsLoader.status === Loader.Ready && desktopIconsLoader.item !== null
+                visible: !GlobalStates.screenLocked
                 sourceComponent: DesktopContextMenu {
                     desktop: desktopIconsLoader.item
                 }
