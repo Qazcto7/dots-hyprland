@@ -717,5 +717,10 @@
   "Automatic game mode: off": "Otomatik oyun modu: kapalı",
   "Game mode toggle": "Oyun modu düğmesi",
   "New window": "Yeni pencere",
-  "Close all windows (%1)": "Tüm pencereleri kapat (%1)"
+  "Close all windows (%1)": "Tüm pencereleri kapat (%1)",
+  "Open with…": "Birlikte aç…",
+  "Cut": "Kes",
+  "Paste": "Yapıştır",
+  "No apps found for this file type": "Bu dosya türü için uygulama bulunamadı",
+  "Move to desktop": "Masaüstüne taşı"
 }

@@ -16,6 +16,13 @@ Item {
 
     readonly property bool selected: desktop.selectedNames.indexOf(item.name) !== -1
     readonly property bool isImage: ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"].indexOf(item.suffix) !== -1
+    readonly property bool isVideo: ["mp4", "mkv", "webm", "mov", "avi", "m4v", "wmv", "flv"].indexOf(item.suffix) !== -1
+    readonly property bool wantsThumbnail: (isVideo || item.suffix === "pdf") && !item.isDir && item.path !== ""
+    readonly property string thumbnail: wantsThumbnail ? (desktop.thumbnails[item.path] ?? "") : ""
+    onWantsThumbnailChanged: if (wantsThumbnail) desktop.requestThumbnail(item.path)
+    Component.onCompleted: if (wantsThumbnail) desktop.requestThumbnail(item.path)
+    // Cut (Ctrl+X) and not pasted yet: dimmed, like in file managers
+    opacity: desktop.cutPaths.indexOf(item.path) !== -1 ? 0.5 : 1
     readonly property var desktopEntry: item.suffix === "desktop" ? DesktopEntries.byId(item.name.replace(/\.desktop$/, "")) : null
 
     // .desktop files that are not installed apps (e.g. copied launchers): read Name/Icon from the file
@@ -124,9 +131,30 @@ Item {
 
             IconImage {
                 anchors.fill: parent
-                visible: !root.isImage
+                visible: !root.isImage && !thumbnailImage.visible
                 implicitSize: 52
                 source: root.iconName.startsWith("/") ? root.desktop.fileUrl(root.iconName) : Quickshell.iconPath(root.iconName, "application-x-executable")
+            }
+            // Video / PDF thumbnail
+            Image {
+                id: thumbnailImage
+                anchors.fill: parent
+                visible: root.thumbnail !== "" && status === Image.Ready
+                asynchronous: true
+                fillMode: Image.PreserveAspectFit
+                sourceSize.width: 104
+                sourceSize.height: 104
+                source: root.thumbnail !== "" ? root.desktop.fileUrl(root.thumbnail) : ""
+            }
+            MaterialSymbol {
+                anchors.centerIn: parent
+                visible: thumbnailImage.visible && root.isVideo
+                text: "play_circle"
+                fill: 1
+                iconSize: 24
+                color: "white"
+                style: Text.Raised
+                styleColor: Qt.rgba(0, 0, 0, 0.6)
             }
             Image {
                 anchors.fill: parent

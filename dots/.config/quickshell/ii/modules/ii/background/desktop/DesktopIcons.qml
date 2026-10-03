@@ -368,6 +368,10 @@ Item {
             const current = root.itemByName[entry.newName];
             root.moveSavedPosition(entry.newName, entry.oldName, current ? { col: current.col, row: current.row } : root.positions[entry.newName]);
             Quickshell.execDetached(["mv", "-n", "--", `${root.desktopDir}/${entry.newName}`, `${root.desktopDir}/${entry.oldName}`]);
+        } else if (entry.type === "moved") {
+            // Pasted after "Cut": move the files back where they came from (never overwriting)
+            for (const [from, to] of entry.pairs)
+                Quickshell.execDetached(["mv", "-n", "--", to, from]);
         } else if (entry.type === "created") {
             // New folder/file or dropped copies: undo moves them to the trash (never deletes)
             Quickshell.execDetached(["gio", "trash", ...entry.paths]);
@@ -388,8 +392,14 @@ Item {
                     Qt.callLater(() => proc.destroy());
                 }
             }
-            // A command that fails to start never ends its output stream
-            onRunningChanged: if (!proc.running && !proc.done) { proc.done = true; Qt.callLater(() => proc.destroy()); }
+            // A command that fails to start never ends its output stream: report "nothing" so
+            // callers waiting for it (e.g. the thumbnail queue) carry on
+            onRunningChanged: {
+                if (proc.running || proc.done) return;
+                proc.done = true;
+                if (proc.callback) proc.callback("");
+                Qt.callLater(() => proc.destroy());
+            }
         }
     }
     function runCapture(command, callback) {
@@ -546,8 +556,14 @@ Item {
             root.undo();
         } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
             root.selectedNames = root.items.map(i => i.name);
+        } else if (event.key === Qt.Key_V && (event.modifiers & Qt.ControlModifier)) {
+            root.paste();
         } else if (selection.length === 0) {
             return;
+        } else if (event.key === Qt.Key_C && (event.modifiers & Qt.ControlModifier)) {
+            root.copyFiles(selection, false);
+        } else if (event.key === Qt.Key_X && (event.modifiers & Qt.ControlModifier)) {
+            root.copyFiles(selection, true);
         } else if (event.key === Qt.Key_Space && (Config.options?.desktopMode.quickLook ?? true)) {
             root.quickLook(selection);
         } else if (event.key === Qt.Key_Delete) {
@@ -563,6 +579,144 @@ Item {
             return;
         }
         event.accepted = true;
+    }
+
+    // ---------- Copy / cut / paste (Ctrl+C, Ctrl+X, Ctrl+V) ----------
+    // Files go to the clipboard as a text/uri-list, so Dolphin and other file managers can paste
+    // them, and files copied there can be pasted on the desktop. "Cut" is remembered here (the
+    // icons are dimmed) and turns the next paste into a move.
+    property var cutPaths: []
+    function copyFiles(items, cut) {
+        const paths = items.map(i => i.path).filter(p => p !== "");
+        if (paths.length === 0) return;
+        root.cutPaths = cut ? paths : [];
+        Quickshell.execDetached(["bash", "-c", 'printf "%s" "$1" | wl-copy --type text/uri-list', "copy",
+            paths.map(p => root.fileUrl(p)).join("\r\n") + "\r\n"]);
+    }
+    function paste(x, y) {
+        if (root.desktopDir === "") return;
+        // First line: "cut" or "copy" (KDE / GNOME cut markers), then the file URLs
+        root.runCapture(["bash", "-c",
+            't="$(wl-paste --list-types 2>/dev/null)"; mode=copy; '
+            + 'if printf "%s\\n" "$t" | grep -qx "application/x-kde-cutselection" && [ "$(wl-paste --no-newline --type application/x-kde-cutselection 2>/dev/null)" = 1 ]; then mode=cut; fi; '
+            + 'if printf "%s\\n" "$t" | grep -qx "text/uri-list"; then echo "$mode"; wl-paste --no-newline --type text/uri-list; '
+            + 'elif printf "%s\\n" "$t" | grep -qx "x-special/gnome-copied-files"; then wl-paste --no-newline --type x-special/gnome-copied-files; fi'],
+            out => {
+                const lines = out.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
+                if (lines.length === 0) return;
+                const cut = lines[0] === "cut";
+                const paths = lines.filter(l => l.startsWith("file://"))
+                    .map(l => decodeURIComponent(l.slice("file://".length).replace(/^localhost(?=\/)/, "")));
+                if (paths.length === 0) return;
+                const ownCut = root.cutPaths.length > 0 && paths.every(p => root.cutPaths.indexOf(p) !== -1);
+                root.cutPaths = [];
+                root.transferFiles(paths, (cut || ownCut) ? "move" : "unique", x, y);
+            });
+    }
+
+    // Copies (or moves) files onto the desktop. mode:
+    //   "skip"   - dropped files: names already on the desktop are skipped (no overwriting, no merging)
+    //   "unique" - pasted copies: an existing name gets " (2)", " (3)"... like file managers do
+    //   "move"   - paste after cut: moved, names already on the desktop are skipped
+    // x, y: where to place the icons (optional). Every action can be undone with Ctrl+Z.
+    function transferFiles(paths, mode, x, y) {
+        paths = paths.filter(p => p !== "" && !p.includes("\n")); // the script reports paths line by line
+        if (mode !== "unique") // already on the desktop: nothing to copy or move
+            paths = paths.filter(p => p.substring(0, p.lastIndexOf("/")) !== root.desktopDir);
+        if (paths.length === 0 || root.desktopDir === "") return;
+        const positioned = x !== undefined && y !== undefined;
+        if (positioned && mode !== "unique")
+            root.placeDroppedFiles(paths.map(p => p.substring(p.lastIndexOf("/") + 1)), x, y);
+        root.runCapture(["bash", "-c", 'dir="$1"; mode="$2"; msg="$3"; shift 3; skipped=0; '
+            + 'for src in "$@"; do b="$(basename -- "$src")"; dest="$dir/$b"; '
+            + 'if [ -e "$dest" ] || [ -L "$dest" ]; then '
+            + '  if [ "$mode" = unique ]; then stem="$b"; ext=""; '
+            + '    if [ ! -d "$src" ]; then case "$b" in ?*.*) stem="${b%.*}"; ext=".${b##*.}";; esac; fi; '
+            + '    i=2; while [ -e "$dir/$stem ($i)$ext" ]; do i=$((i+1)); done; dest="$dir/$stem ($i)$ext"; '
+            + '  else skipped=$((skipped+1)); continue; fi; '
+            + 'fi; '
+            + 'if [ "$mode" = move ]; then mv -n -- "$src" "$dest" && printf "%s\\t%s\\n" "$src" "$dest"; '
+            + 'else cp -r -- "$src" "$dest" && printf "%s\\n" "$dest"; fi; '
+            + 'done; [ "$skipped" -gt 0 ] && notify-send -a Desktop "$msg" "$skipped"; true',
+            "transfer", root.desktopDir, mode, Translation.tr("Already on the desktop, not copied"), ...paths],
+            out => {
+                const lines = out.split("\n").filter(line => line !== "");
+                if (lines.length === 0) return;
+                if (mode === "move") {
+                    const pairs = lines.map(l => l.split("\t")).filter(p => p.length === 2);
+                    root.pushUndo({ type: "moved", label: Translation.tr("Move to desktop"), pairs: pairs });
+                } else {
+                    root.pushUndo({ type: "created", label: Translation.tr("Copy to desktop"), paths: lines });
+                }
+                // Pasted copies get their final names only now
+                if (positioned && mode === "unique")
+                    root.placeDroppedFiles(lines.map(p => p.substring(p.lastIndexOf("/") + 1)), x, y);
+            });
+    }
+
+    // ---------- Open with ----------
+    // Apps registered for the file's type (gio mime), default first. Calls back with
+    // [{ id, name, icon }].
+    function openWithApps(item, callback) {
+        root.runCapture(["bash", "-c", 'm="$(xdg-mime query filetype "$1" 2>/dev/null)"; [ -n "$m" ] && gio mime "$m" 2>/dev/null', "openwith", item.path],
+            out => {
+                const ids = [];
+                for (const line of out.split("\n")) {
+                    const match = line.match(/([^\s:]+\.desktop)\s*$/);
+                    if (match && ids.indexOf(match[1]) === -1) ids.push(match[1]);
+                }
+                const apps = ids.map(id => {
+                    const entry = DesktopEntries.byId(id.replace(/\.desktop$/, ""));
+                    return entry ? { id: id, name: entry.name, icon: entry.icon } : null;
+                }).filter(app => app !== null);
+                callback(apps);
+            });
+    }
+    function openWith(item, desktopId) {
+        // gio launch needs the .desktop file itself: look it up in the XDG data dirs
+        Quickshell.execDetached(["bash", "-c",
+            'IFS=:; for d in "${XDG_DATA_HOME:-$HOME/.local/share}" ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do '
+            + 'f="$d/applications/$1"; if [ -f "$f" ]; then exec gio launch "$f" "$2"; fi; done; exec xdg-open "$2"',
+            "openwith", desktopId, item.path]);
+    }
+
+    // ---------- Thumbnails for videos and PDFs ----------
+    // Uses the shared freedesktop thumbnail cache when a file manager already made one,
+    // otherwise renders one (ffmpegthumbnailer/ffmpeg, pdftoppm) into its own cache.
+    // One at a time, so a desktop full of videos doesn't start dozens of ffmpeg processes.
+    property var thumbnails: ({}) // path -> thumbnail file
+    property var thumbnailQueue: []
+    property bool thumbnailBusy: false
+    function requestThumbnail(path) {
+        if (path === "" || root.thumbnails[path] !== undefined || root.thumbnailQueue.indexOf(path) !== -1) return;
+        root.thumbnailQueue = root.thumbnailQueue.concat([path]);
+        root.nextThumbnail();
+    }
+    readonly property string thumbnailScript: 'f="$1"; '
+        + 'uri="$(python3 -c "import sys, urllib.parse; print(\\"file://\\" + urllib.parse.quote(sys.argv[1], safe=\\"/-_.!~*()&=+\\$,;:@\\x27\\"))" "$f")"; '
+        + 'md5="$(printf "%s" "$uri" | md5sum | cut -d" " -f1)"; '
+        + 'for t in "${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails/large/$md5.png" "${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails/normal/$md5.png"; do '
+        + '  if [ -s "$t" ] && [ "$t" -nt "$f" ]; then printf "%s" "$t"; exit 0; fi; done; '
+        + 'own="${XDG_CACHE_HOME:-$HOME/.cache}/qs-desktop-thumbnails"; mkdir -p "$own"; out="$own/$md5.png"; '
+        + 'if [ -s "$out" ] && [ "$out" -nt "$f" ]; then printf "%s" "$out"; exit 0; fi; '
+        + 'case "${f##*.}" in '
+        + '  [Pp][Dd][Ff]) pdftoppm -png -singlefile -f 1 -l 1 -scale-to 256 "$f" "${out%.png}" ;; '
+        // (ffmpeg exits 0 without a picture when the video is shorter than the seek, so check the file)
+        + '  *) ffmpegthumbnailer -i "$f" -o "$out" -s 256; [ -s "$out" ] || ffmpeg -y -loglevel error -ss 3 -i "$f" -frames:v 1 -vf "scale=256:-2" "$out"; '
+        + '     [ -s "$out" ] || ffmpeg -y -loglevel error -i "$f" -frames:v 1 -vf "scale=256:-2" "$out" ;; '
+        + 'esac >/dev/null 2>&1; [ -s "$out" ] && printf "%s" "$out"'
+    function nextThumbnail() {
+        if (root.thumbnailBusy || root.thumbnailQueue.length === 0) return;
+        const path = root.thumbnailQueue[0];
+        root.thumbnailQueue = root.thumbnailQueue.slice(1);
+        root.thumbnailBusy = true;
+        root.runCapture(["timeout", "-k", "2", "20", "bash", "-c", root.thumbnailScript, "thumb", path], out => {
+            const result = Object.assign({}, root.thumbnails);
+            result[path] = out.trim(); // "" = no thumbnail (keeps the normal icon, not retried)
+            root.thumbnails = result;
+            root.thumbnailBusy = false;
+            root.nextThumbnail();
+        });
     }
 
     // ---------- Quick Look (Space) ----------
@@ -611,19 +765,7 @@ Item {
                 .filter(p => p.substring(0, p.lastIndexOf("/")) !== root.desktopDir); // already on the desktop
             if (paths.length === 0)
                 return;
-            root.placeDroppedFiles(paths.map(p => p.substring(p.lastIndexOf("/") + 1)), drop.x, drop.y);
-            // Items whose name already exists on the desktop are skipped (no overwriting, no merging
-            // folders); the script prints the copied paths, one per line, for undo.
-            root.runCapture(["bash", "-c", 'dir="$1"; msg="$2"; shift 2; skipped=0; '
-                + 'for src in "$@"; do b="$(basename -- "$src")"; '
-                + 'if [ -e "$dir/$b" ]; then skipped=$((skipped+1)); elif cp -r -- "$src" "$dir/$b"; then printf "%s\\n" "$dir/$b"; fi; done; '
-                + '[ "$skipped" -gt 0 ] && notify-send -a Desktop "$msg" "$skipped"; true',
-                "drop", root.desktopDir, Translation.tr("Already on the desktop, not copied"), ...paths],
-                out => {
-                    const copied = out.split("\n").filter(line => line !== "");
-                    if (copied.length > 0)
-                        root.pushUndo({ type: "created", label: Translation.tr("Copy to desktop"), paths: copied });
-                });
+            root.transferFiles(paths, "skip", drop.x, drop.y);
             drop.accept(Qt.CopyAction);
         }
     }

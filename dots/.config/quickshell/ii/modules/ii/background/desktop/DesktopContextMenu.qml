@@ -20,6 +20,7 @@ Item {
 
     function close() {
         root.open = false;
+        root.openWithApps = null;
     }
 
     Connections {
@@ -41,7 +42,13 @@ Item {
         }
     }
 
+    // Where the menu was opened (paste puts the files there)
+    property real menuX: 0
+    property real menuY: 0
     function showAt(x, y) {
+        root.openWithApps = null;
+        root.menuX = x;
+        root.menuY = y;
         root.open = true;
         menu.x = Math.max(8, Math.min(x, root.width - menu.width - 8));
         menu.y = Math.max(8, Math.min(y, root.height - menu.height - 8));
@@ -64,6 +71,11 @@ Item {
     readonly property bool multiple: actionTargets.length > 1
     readonly property var itemActions: [
         { icon: "open_in_new", text: Translation.tr("Open"), run: () => root.actionTargets.forEach(i => root.desktop.open(i)) },
+        ...(root.multiple ? [] : [
+            { icon: "apps", text: Translation.tr("Open with…"), keepOpen: true, run: () => root.showOpenWith(root.targetItem) },
+        ]),
+        { icon: "content_copy", text: Translation.tr("Copy") + "  (Ctrl+C)", run: () => root.desktop.copyFiles(root.actionTargets, false) },
+        { icon: "content_cut", text: Translation.tr("Cut") + "  (Ctrl+X)", run: () => root.desktop.copyFiles(root.actionTargets, true) },
         ...((Config.options?.desktopMode.quickLook ?? true) ? [
             { icon: "visibility", text: Translation.tr("Quick Look") + "  (Space)", run: () => root.desktop.quickLook(root.actionTargets) },
         ] : []),
@@ -79,6 +91,7 @@ Item {
         ...(root.desktop?.lastUndo ? [
             { icon: "undo", text: Translation.tr("Undo: %1").arg(root.desktop.lastUndo.label) + "  (Ctrl+Z)", run: () => root.desktop.undo() },
         ] : []),
+        { icon: "content_paste", text: Translation.tr("Paste") + "  (Ctrl+V)", run: () => root.desktop.paste(root.menuX, root.menuY) },
         { icon: "create_new_folder", text: Translation.tr("New folder"), run: () => root.desktop.newFolder() },
         { icon: "note_add", text: Translation.tr("New text file"), run: () => root.desktop.newTextFile() },
         { icon: "terminal", text: Translation.tr("Open terminal here"), run: () => root.desktop.openTerminalHere() },
@@ -87,6 +100,24 @@ Item {
         { icon: "grid_view", text: Translation.tr("Arrange icons"), run: () => root.desktop.resetPositions() },
         { icon: "monitor", text: Translation.tr("Display settings"), run: () => root.desktop.displaySettings() },
         { icon: "settings", text: Translation.tr("System Settings"), run: () => root.desktop.systemSettings() },
+    ]
+
+    // ---- "Open with" page: apps registered for the file type, default first ----
+    property var openWithApps: null // null = normal menu
+    property var openWithTarget: null
+    function showOpenWith(item) {
+        root.openWithTarget = item;
+        root.desktop.openWithApps(item, apps => {
+            if (!root.open || root.openWithTarget !== item) return;
+            root.openWithApps = apps;
+            // The list can be taller than the menu was: keep it on screen
+            Qt.callLater(() => { menu.y = Math.max(8, Math.min(menu.y, root.height - menu.height - 8)); });
+        });
+    }
+    readonly property var openWithActions: [
+        { icon: "arrow_back", text: Translation.tr("Back"), keepOpen: true, run: () => { root.openWithApps = null; } },
+        ...(root.openWithApps ?? []).map(app => ({ icon: "open_in_new", text: app.name, run: () => root.desktop.openWith(root.openWithTarget, app.id) })),
+        ...((root.openWithApps ?? []).length === 0 ? [{ icon: "block", text: Translation.tr("No apps found for this file type"), keepOpen: true, run: () => {} }] : []),
     ]
 
     StyledRectangularShadow {
@@ -108,7 +139,7 @@ Item {
             spacing: 2
 
             Repeater {
-                model: root.targetItem ? root.itemActions : root.desktopActions
+                model: root.openWithApps !== null ? root.openWithActions : (root.targetItem ? root.itemActions : root.desktopActions)
                 delegate: RippleButtonWithIcon {
                     required property var modelData
                     Layout.fillWidth: true
@@ -118,6 +149,10 @@ Item {
                     // Keep keyboard focus on the desktop (Ctrl+Z, Delete... after using the menu)
                     focusPolicy: Qt.NoFocus
                     onClicked: {
+                        if (modelData.keepOpen) {
+                            modelData.run();
+                            return;
+                        }
                         root.close();
                         root.desktop.forceActiveFocus();
                         modelData.run();
