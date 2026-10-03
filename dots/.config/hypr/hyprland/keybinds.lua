@@ -199,8 +199,11 @@ local function isFirefox(win)
     return class == "firefox" or class == "org.mozilla.firefox" or class == "firefox-esr" or class == "librewolf"
 end
 hl.bind("SUPER + F", function()
-    if isFirefox(hl.get_active_window()) then
-        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 2, client = 0, action = "toggle" }))
+    local win = hl.get_active_window()
+    -- A window in windowed fullscreen (title bar ◇ button, or Firefox) always goes back to normal
+    local inWindowedFullscreen = win and (tonumber(win.fullscreen) or 0) ~= 0 and (tonumber(win.fullscreen_client) or 0) == 0
+    if (isFirefox(win) or inWindowedFullscreen) and desktop_windowed_fullscreen then
+        desktop_windowed_fullscreen(win)
     else
         hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
     end

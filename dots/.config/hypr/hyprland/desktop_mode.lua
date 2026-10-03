@@ -198,6 +198,23 @@ function desktop_toggle_maximize(win)
     geometricMaximizeToggle(win)
 end
 
+-- "Windowed fullscreen": the window covers the whole screen (bar and dock hide and slide in at
+-- the screen edges) but the app itself is not told it is fullscreen, so it keeps its normal
+-- interface (tabs, toolbars...). Works for every app. Used by the title bar's ◇ button and by
+-- SUPER + F; the title bar is not drawn while fullscreen, so SUPER + F (or the button's window
+-- being toggled again from the keyboard) brings it back.
+function desktop_windowed_fullscreen(win)
+    win = win or hl.get_active_window()
+    if not win then return end
+    local internal = tonumber(win.fullscreen) or 0
+    if internal ~= 0 then
+        -- Any fullscreen/maximized state: back to a normal window
+        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = win }))
+    else
+        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 2, client = 0, action = "set", window = win }))
+    end
+end
+
 -- Forget saved geometry of closed windows
 hl.on("window.close", function(win)
     if win and win.address and maximizedGeometry[win.address] then

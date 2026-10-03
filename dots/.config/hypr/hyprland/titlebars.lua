@@ -83,7 +83,9 @@ hl.plugin.hyprbars.add_button({
     fg_color = button_fg,
     size = 24,
     icon = "◇",
-    action = [[hyprctl eval 'desktop_toggle_maximize()']],
+    -- Windowed fullscreen (whole screen, the app keeps its normal interface); SUPER + F leaves it.
+    -- Double-clicking the title bar still maximizes.
+    action = [[hyprctl eval 'desktop_windowed_fullscreen()']],
 })
 -- Minimize: Hyprland has no real minimize, so the window goes to a hidden
 -- special workspace. Clicking its dock icon brings it back.
