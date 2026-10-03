@@ -38,12 +38,25 @@ Scope { // Scope
             // macOS-like: while a window is fullscreen on this screen, the dock hides and slides in
             // when the mouse reaches the bottom edge (drawn above the fullscreen window).
             readonly property bool fullscreenActive: HyprlandData.hasFullscreenOn(dockRoot.screen?.name ?? "")
-            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || fullscreenActive
+            // Same for a maximized window when "maximized windows hide the bar" is on: it then uses
+            // the dock's space too, even with a pinned dock
+            readonly property bool maximizedActive: (Config.options?.desktopMode.maximizeHidesBar ?? true)
+                && HyprlandData.hasMaximizedOn(dockRoot.screen?.name ?? "")
+            readonly property bool coveredActive: fullscreenActive || maximizedActive
+            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || coveredActive
             WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 
-            property bool reveal: fullscreenActive
+            // The dock also shows by itself on an empty workspace. That used to be "no window has
+            // focus", which is also true right after switching workspaces (SUPER + 1/2) until the
+            // mouse moves onto a window, so the dock stayed up over maximized/fullscreen windows.
+            // Now it checks whether this screen's workspace really has no windows.
+            readonly property int workspaceId: HyprlandData.monitors.find(m => m.name === dockRoot.screen?.name)?.activeWorkspace?.id ?? -1
+            readonly property bool emptyWorkspace: !HyprlandData.windowList.some(w =>
+                w.workspace?.id === dockRoot.workspaceId && w.mapped !== false && w.hidden !== true)
+
+            property bool reveal: coveredActive
                 ? (dockMouseArea.containsMouse || dockApps.requestDockShow || dockTrash.menuOpen)
-                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || (!ToplevelManager.activeToplevel?.activated))
+                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || dockRoot.emptyWorkspace)
 
             anchors {
                 bottom: true
@@ -51,7 +64,7 @@ Scope { // Scope
                 right: true
             }
 
-            exclusiveZone: (root.pinned && !fullscreenActive) ? implicitHeight - root.headroom - (Appearance.sizes.hyprlandGapsOut) - (Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut) : 0
+            exclusiveZone: (root.pinned && !coveredActive) ? implicitHeight - root.headroom - (Appearance.sizes.hyprlandGapsOut) - (Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut) : 0
 
             implicitWidth: dockBackground.implicitWidth
             WlrLayershell.namespace: "quickshell:dock"

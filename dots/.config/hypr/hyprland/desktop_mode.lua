@@ -97,13 +97,13 @@ end
 
 -- Free area of a monitor for a window with title bar and borders (between bar and dock):
 -- x, y = where the window content starts, w, h = content size, with the usual gaps.
--- ignoreTop: use the space of the top bar too (maximized windows hide the bar, see below)
-local function desktopWorkArea(win, mon, ignoreTop)
+-- ignoreBars: use the space of the top bar and the dock too (maximized windows hide them, see below)
+local function desktopWorkArea(win, mon, ignoreBars)
     mon = mon or win.monitor
     if not mon then return nil end
     local scale = mon.scale or 1
     local r = mon.reserved or { top = 0, right = 0, bottom = 0, left = 0 }
-    local reserved = { top = ignoreTop and 0 or r.top, right = r.right, bottom = r.bottom, left = r.left }
+    local reserved = { top = ignoreBars and 0 or r.top, right = r.right, bottom = ignoreBars and 0 or r.bottom, left = r.left }
     local border = tonumber(hl.get_config("general:border_size")) or 1
     local gap = 6
     local bar = 0
@@ -168,8 +168,8 @@ local function geometricMaximizeToggle(win)
         end
     end
 
-    -- With "maximized windows hide the bar" the window also takes the bar's place; the bar
-    -- (Quickshell) hides while such a window is on screen and slides in at the top edge.
+    -- With "maximized windows hide the bar" the window also takes the place of the bar and the
+    -- dock; both (Quickshell) hide while such a window is on screen and slide in at the edges.
     local area = desktopWorkArea(win, nil, mode.maximize_hides_bar)
     if not area then return end
     placeWindow(win, area)

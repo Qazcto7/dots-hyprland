@@ -730,5 +730,6 @@
   "Open trash": "Çöpü aç",
   "Empty trash (%1 items)": "Çöpü boşalt (%1 öğe)",
   "Trash is empty": "Çöp boş",
-  "Trash in the dock": "Dock'ta çöp kutusu"
+  "Trash in the dock": "Dock'ta çöp kutusu",
+  "A maximized window takes the whole screen; the top bar and the dock hide and appear at the screen edges": "Büyütülen pencere tüm ekranı kaplar; üst bar ve dock gizlenir, ekran kenarlarında görünür"
 }

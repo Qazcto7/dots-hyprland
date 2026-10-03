@@ -182,7 +182,7 @@ ContentPage {
                     Config.options.desktopMode.maximizeHidesBar = checked;
                 }
                 StyledToolTip {
-                    text: Translation.tr("A maximized window takes the whole height and the top bar hides; move the mouse to the top edge to show it")
+                    text: Translation.tr("A maximized window takes the whole screen; the top bar and the dock hide and appear at the screen edges")
                 }
             }
             ConfigSwitch {
