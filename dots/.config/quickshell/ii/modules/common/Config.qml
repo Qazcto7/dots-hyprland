@@ -328,6 +328,8 @@ Singleton {
                 property bool snapping: true // Snap floating windows to edges/each other
                 property bool kdeServices: true // Start kded6, SUPER+CTRL+I opens KDE System Settings
                 property bool desktopIcons: true // Icons of the desktop folder + right-click desktop menu
+                property bool quickLook: true // Space previews the selected desktop icons (like macOS Quick Look)
+                property bool altTab: true // Alt+Tab window switcher with live previews
             }
 
             property JsonObject startMenu: JsonObject {

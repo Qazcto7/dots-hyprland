@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.modules.common
+import qs.modules.ii.altTab
 import qs.modules.ii.background
 import qs.modules.ii.bar
 import qs.modules.ii.cheatsheet
@@ -13,6 +14,7 @@ import qs.modules.ii.onScreenDisplay
 import qs.modules.ii.onScreenKeyboard
 import qs.modules.ii.overview
 import qs.modules.ii.polkit
+import qs.modules.ii.quickLook
 import qs.modules.ii.regionSelector
 import qs.modules.ii.screenCorners
 import qs.modules.ii.screenTranslator
@@ -25,6 +27,7 @@ import qs.modules.ii.verticalBar
 import qs.modules.ii.wallpaperSelector
 
 Scope {
+    PanelLoader { extraCondition: Config.options.desktopMode.altTab; component: AltTab {} }
     PanelLoader { extraCondition: !Config.options.bar.vertical; component: Bar {} }
     PanelLoader { component: Background {} }
     PanelLoader { component: Cheatsheet {} }
@@ -37,6 +40,7 @@ Scope {
     PanelLoader { component: Overlay {} }
     PanelLoader { component: Overview {} }
     PanelLoader { component: Polkit {} }
+    PanelLoader { extraCondition: Config.options.desktopMode.quickLook; component: QuickLook {} }
     PanelLoader { component: RegionSelector {} }
     PanelLoader { component: ScreenCorners {} }
     PanelLoader { component: ScreenTranslator {} }

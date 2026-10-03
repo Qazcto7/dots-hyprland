@@ -664,5 +664,16 @@
   "Undo: %1": "Geri al: %1",
   "Invalid name": "Geçersiz ad",
   "Already on the desktop, not copied": "Masaüstünde zaten var, kopyalanmadı",
-  "Copy to desktop": "Masaüstüne kopyala"
+  "Copy to desktop": "Masaüstüne kopyala",
+  "Quick Look": "Hızlı Bakış",
+  "Quick Look (Space)": "Hızlı Bakış (Boşluk)",
+  "Select a desktop icon and press Space to preview it, like macOS Quick Look": "Masaüstünde bir simge seçip Boşluk'a basınca önizlemesini gösterir (macOS Hızlı Bakış gibi)",
+  "Window switcher (Alt+Tab)": "Pencere değiştirici (Alt+Tab)",
+  "Alt+Tab shows previews of your windows, most recently used first. Release Alt to switch.": "Alt+Tab pencerelerin önizlemelerini en son kullanılandan başlayarak gösterir. Geçmek için Alt'ı bırakın.",
+  "Loading…": "Yükleniyor…",
+  "Empty folder": "Boş klasör",
+  "No preview (needs pdftoppm from poppler)": "Önizleme yok (poppler paketindeki pdftoppm gerekli)",
+  "No preview (needs ffmpegthumbnailer or ffmpeg)": "Önizleme yok (ffmpegthumbnailer veya ffmpeg gerekli)",
+  "No preview available": "Önizleme yok",
+  "%1 items": "%1 öğe"
 }

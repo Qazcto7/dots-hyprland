@@ -26,6 +26,9 @@ Singleton {
     property bool screenUnlockFailed: false
     property bool screenTranslatorOpen: false
     property bool sessionOpen: false
+    // Quick Look (Space on desktop icons): files being previewed and the shown one
+    property var quickLookItems: []
+    property int quickLookIndex: 0
     property bool startMenuOpen: false
     property real startMenuLastClosed: 0 // To avoid instantly reopening when the dock button closes it via focus grab
     onStartMenuOpenChanged: if (!startMenuOpen) startMenuLastClosed = Date.now()

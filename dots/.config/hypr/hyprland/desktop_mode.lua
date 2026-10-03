@@ -3,7 +3,7 @@
 --   ~/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua
 -- and runs `hyprctl reload`. Turning everything off gives the stock end-4 behavior.
 
-local defaults = { floating = true, snap = true, kde_services = true }
+local defaults = { floating = true, snap = true, kde_services = true, alt_tab = true }
 
 -- The file is only parsed for "key = true/false" pairs, never executed
 local mode = {}
@@ -51,6 +51,15 @@ if mode.kde_services then
     end)
     hl.bind("SUPER + CTRL + I", hl.dsp.exec_cmd("env XDG_CURRENT_DESKTOP=KDE systemsettings"),
         { description = "App: KDE System Settings" })
+end
+
+-- Alt+Tab window switcher (Quickshell, modules/ii/altTab). Tab / Shift+Tab move through the windows
+-- (most recently used first), releasing Alt focuses the chosen one. The Alt release bind must not
+-- consume the key, so Alt keeps working normally in apps.
+if mode.alt_tab then
+    hl.bind("ALT + Tab", hl.dsp.global("quickshell:altTabNext"), { description = "Shell: Window switcher" })
+    hl.bind("ALT + SHIFT + Tab", hl.dsp.global("quickshell:altTabPrev"), { description = "Shell: Window switcher (back)" })
+    hl.bind("ALT_L", hl.dsp.global("quickshell:altTabRelease"), { ignore_mods = true, non_consuming = true })
 end
 
 -- Plasma-like maximize for floating windows: the window is resized to fill the free area

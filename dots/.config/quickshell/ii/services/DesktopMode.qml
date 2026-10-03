@@ -22,8 +22,9 @@ Singleton {
     readonly property bool floating: Config.options?.desktopMode.floatingWindows ?? true
     readonly property bool snap: Config.options?.desktopMode.snapping ?? true
     readonly property bool kdeServices: Config.options?.desktopMode.kdeServices ?? true
+    readonly property bool altTab: Config.options?.desktopMode.altTab ?? true
 
-    readonly property string content: `return { floating = ${root.floating}, snap = ${root.snap}, kde_services = ${root.kdeServices} }`
+    readonly property string content: `return { floating = ${root.floating}, snap = ${root.snap}, kde_services = ${root.kdeServices}, alt_tab = ${root.altTab} }`
 
     function load() {
         // Referencing the singleton instantiates it; the timer does the first write.

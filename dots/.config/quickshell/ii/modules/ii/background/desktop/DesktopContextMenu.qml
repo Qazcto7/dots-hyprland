@@ -56,6 +56,9 @@ Item {
     readonly property bool multiple: actionTargets.length > 1
     readonly property var itemActions: [
         { icon: "open_in_new", text: Translation.tr("Open"), run: () => root.actionTargets.forEach(i => root.desktop.open(i)) },
+        ...((Config.options?.desktopMode.quickLook ?? true) ? [
+            { icon: "visibility", text: Translation.tr("Quick Look") + "  (Space)", run: () => root.desktop.quickLook(root.actionTargets) },
+        ] : []),
         ...(root.multiple ? [] : [
             { icon: "folder_open", text: Translation.tr("Show in file manager"), run: () => root.desktop.showInFileManager(root.targetItem) },
             { icon: "edit", text: Translation.tr("Rename"), run: () => root.desktop.rename(root.targetItem) },

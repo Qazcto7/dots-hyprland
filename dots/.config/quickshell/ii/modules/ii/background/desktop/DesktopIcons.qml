@@ -495,6 +495,8 @@ Item {
             root.selectedNames = root.items.map(i => i.name);
         } else if (selection.length === 0) {
             return;
+        } else if (event.key === Qt.Key_Space && (Config.options?.desktopMode.quickLook ?? true)) {
+            root.quickLook(selection);
         } else if (event.key === Qt.Key_Delete) {
             root.trashMany(selection);
             root.clearSelection();
@@ -508,6 +510,32 @@ Item {
             return;
         }
         event.accepted = true;
+    }
+
+    // ---------- Quick Look (Space) ----------
+    // Several selected icons: browse those. One icon: browse the whole desktop in grid order,
+    // and the selection follows (like Finder).
+    property bool quickLookFollowsSelection: false
+    function quickLook(selection) {
+        if (selection.length === 0) return;
+        if (selection.length > 1) {
+            root.quickLookFollowsSelection = false;
+            GlobalStates.quickLookIndex = 0;
+            GlobalStates.quickLookItems = selection;
+            return;
+        }
+        const ordered = root.items.slice().sort((a, b) => a.col - b.col || a.row - b.row);
+        root.quickLookFollowsSelection = true;
+        GlobalStates.quickLookIndex = Math.max(0, ordered.findIndex(i => i.name === selection[0].name));
+        GlobalStates.quickLookItems = ordered;
+    }
+    Connections {
+        target: GlobalStates
+        function onQuickLookIndexChanged() {
+            const shown = GlobalStates.quickLookItems[GlobalStates.quickLookIndex];
+            if (root.quickLookFollowsSelection && shown && root.itemByName[shown.name])
+                root.selectOnly(shown.name);
+        }
     }
 
     // ---------- Drop files from a file manager (Dolphin...) ----------

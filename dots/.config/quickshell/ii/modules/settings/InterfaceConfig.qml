@@ -125,6 +125,31 @@ ContentPage {
                 text: Translation.tr("Shows the files of your Desktop folder on the wallpaper. Right-click the desktop for a menu.")
             }
         }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
+                buttonIcon: "visibility"
+                text: Translation.tr("Quick Look (Space)")
+                checked: Config.options.desktopMode.quickLook
+                onCheckedChanged: {
+                    Config.options.desktopMode.quickLook = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Select a desktop icon and press Space to preview it, like macOS Quick Look")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "tab"
+                text: Translation.tr("Window switcher (Alt+Tab)")
+                checked: Config.options.desktopMode.altTab
+                onCheckedChanged: {
+                    Config.options.desktopMode.altTab = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Alt+Tab shows previews of your windows, most recently used first. Release Alt to switch.")
+                }
+            }
+        }
         ConfigSwitch {
             buttonIcon: "select_window"
             text: Translation.tr("Floating windows (like KDE Plasma)")
