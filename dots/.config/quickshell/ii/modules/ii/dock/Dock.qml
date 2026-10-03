@@ -64,6 +64,19 @@ Scope { // Scope
                 item: dockInputRegion
             }
 
+            // Input region: the dock without the transparent headroom above it.
+            // Must be a direct child bound to dockMouseArea's position: Region only follows its
+            // item's own x/y/size, so an item nested inside the sliding MouseArea kept a stale
+            // mask after reveal/hide (e.g. after leaving fullscreen) and the dock ignored the mouse.
+            Item {
+                id: dockInputRegion
+                readonly property real cut: dockRoot.reveal ? root.headroom : 0
+                x: dockMouseArea.x
+                y: dockMouseArea.y + cut
+                width: dockMouseArea.width
+                height: Math.max(0, dockMouseArea.height - cut)
+            }
+
             MouseArea {
                 id: dockMouseArea
                 height: parent.height
@@ -77,17 +90,6 @@ Scope { // Scope
 
                 Behavior on anchors.topMargin {
                     animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-
-                Item {
-                    id: dockInputRegion
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        top: parent.top
-                        bottom: parent.bottom
-                        topMargin: dockRoot.reveal ? root.headroom : 0
-                    }
                 }
 
                 Item {
