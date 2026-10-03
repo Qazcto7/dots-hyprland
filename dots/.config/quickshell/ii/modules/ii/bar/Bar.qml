@@ -56,11 +56,16 @@ Scope {
                 // macOS-like: while a window is fullscreen on this screen, the bar hides and
                 // slides in when the mouse reaches the top edge (drawn above the fullscreen window).
                 readonly property bool fullscreenActive: HyprlandData.hasFullscreenOn(barRoot.screen?.name ?? "")
-                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || fullscreenActive
-                WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
+                // Same for a maximized window when "maximized windows hide the bar" is on (it then
+                // also uses the bar's space). Only for a bar at the top.
+                readonly property bool maximizedActive: (Config?.options.desktopMode.maximizeHidesBar ?? true)
+                    && !(Config?.options.bar.bottom ?? false) && HyprlandData.hasMaximizedOn(barRoot.screen?.name ?? "")
+                readonly property bool coveredActive: fullscreenActive || maximizedActive
+                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
+                WlrLayershell.layer: coveredActive ? WlrLayer.Overlay : WlrLayer.Top
 
                 exclusionMode: ExclusionMode.Ignore
-                exclusiveZone: (barRoot.autoHideActive && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.fullscreenActive)) ? 0 :
+                exclusiveZone: (barRoot.autoHideActive && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
                     Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
@@ -158,7 +163,7 @@ Scope {
                             bottom: undefined
                         }
                         height: Appearance.rounding.screenRounding
-                        active: showBarBackground && Appearance.barCornerStyle === 0 && !barRoot.fullscreenActive // Hug
+                        active: showBarBackground && Appearance.barCornerStyle === 0 && !barRoot.coveredActive // Hug
 
                         states: State {
                             name: "bottom"

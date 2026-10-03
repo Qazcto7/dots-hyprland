@@ -3,7 +3,7 @@
 -- Shared by desktop_mode.lua and titlebars.lua. The file is only parsed for
 -- "key = true/false" pairs, never executed.
 
-local defaults = { floating = true, snap = true, kde_services = true, alt_tab = true, snap_zones = true, auto_game_mode = true }
+local defaults = { floating = true, snap = true, kde_services = true, alt_tab = true, snap_zones = true, auto_game_mode = true, maximize_hides_bar = true }
 
 local mode = {}
 local file = io.open(HOME .. "/.local/state/quickshell/user/generated/hyprland/desktop_mode.lua", "r")

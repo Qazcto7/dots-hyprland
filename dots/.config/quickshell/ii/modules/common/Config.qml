@@ -333,6 +333,7 @@ Singleton {
                 property bool altTab: true // Alt+Tab window switcher with live previews
                 property bool snapZones: true // Drag a window to a screen edge/corner: half/quarter/maximized (with preview)
                 property bool autoGameMode: true // No animations/blur/shadows while a window is fullscreen
+                property bool maximizeHidesBar: true // A maximized window takes the whole height; the top bar hides (shows at the top edge)
             }
 
             property JsonObject startMenu: JsonObject {

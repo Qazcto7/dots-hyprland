@@ -722,5 +722,7 @@
   "Cut": "Kes",
   "Paste": "Yapıştır",
   "No apps found for this file type": "Bu dosya türü için uygulama bulunamadı",
-  "Move to desktop": "Masaüstüne taşı"
+  "Move to desktop": "Masaüstüne taşı",
+  "Maximized windows hide the bar": "Büyütülen pencerede bar gizlensin",
+  "A maximized window takes the whole height and the top bar hides; move the mouse to the top edge to show it": "Büyütülen pencere tüm yüksekliği kaplar ve üst bar gizlenir; göstermek için fareyi üst kenara götürün"
 }

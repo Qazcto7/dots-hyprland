@@ -36,6 +36,25 @@ Singleton {
         return root.windowList.some(w => workspaceIds.indexOf(w.workspace?.id) !== -1 && ((w.fullscreen ?? 0) & 2) !== 0);
     }
 
+    // True if a maximized window is shown on the monitor with this name: Hyprland's maximize, or a
+    // floating window spanning the screen width that starts at the very top (desktop mode's
+    // maximize when it takes the bar's place). A maximized window dragged away stops counting.
+    function hasMaximizedOn(monitorName) {
+        const mon = root.monitors.find(m => m.name === monitorName);
+        if (!mon) return false;
+        const workspaceIds = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
+        const rotated = ((mon.transform ?? 0) % 2) === 1;
+        const scale = mon.scale || 1;
+        const width = (rotated ? mon.height : mon.width) / scale;
+        return root.windowList.some(w => {
+            if (workspaceIds.indexOf(w.workspace?.id) === -1 || w.hidden || w.mapped === false) return false;
+            const fs = w.fullscreen ?? 0;
+            if ((fs & 2) !== 0) return false; // fullscreen is handled separately
+            if ((fs & 1) !== 0) return true;
+            return w.floating && (w.size?.[0] ?? 0) >= width * 0.9 && ((w.at?.[1] ?? 9999) - mon.y) <= 50;
+        });
+    }
+
     function toplevelsForWorkspace(workspace) {
         return ToplevelManager.toplevels.values.filter(toplevel => {
             const address = `0x${toplevel.HyprlandToplevel?.address}`;

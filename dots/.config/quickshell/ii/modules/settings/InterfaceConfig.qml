@@ -175,6 +175,17 @@ ContentPage {
                 }
             }
             ConfigSwitch {
+                buttonIcon: "fit_screen"
+                text: Translation.tr("Maximized windows hide the bar")
+                checked: Config.options.desktopMode.maximizeHidesBar
+                onCheckedChanged: {
+                    Config.options.desktopMode.maximizeHidesBar = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("A maximized window takes the whole height and the top bar hides; move the mouse to the top edge to show it")
+                }
+            }
+            ConfigSwitch {
                 buttonIcon: "sports_esports"
                 text: Translation.tr("Automatic game mode")
                 checked: Config.options.desktopMode.autoGameMode

@@ -97,11 +97,13 @@ end
 
 -- Free area of a monitor for a window with title bar and borders (between bar and dock):
 -- x, y = where the window content starts, w, h = content size, with the usual gaps.
-local function desktopWorkArea(win, mon)
+-- ignoreTop: use the space of the top bar too (maximized windows hide the bar, see below)
+local function desktopWorkArea(win, mon, ignoreTop)
     mon = mon or win.monitor
     if not mon then return nil end
     local scale = mon.scale or 1
-    local reserved = mon.reserved or { top = 0, right = 0, bottom = 0, left = 0 }
+    local r = mon.reserved or { top = 0, right = 0, bottom = 0, left = 0 }
+    local reserved = { top = ignoreTop and 0 or r.top, right = r.right, bottom = r.bottom, left = r.left }
     local border = tonumber(hl.get_config("general:border_size")) or 1
     local gap = 6
     local bar = 0
@@ -166,7 +168,9 @@ local function geometricMaximizeToggle(win)
         end
     end
 
-    local area = desktopWorkArea(win)
+    -- With "maximized windows hide the bar" the window also takes the bar's place; the bar
+    -- (Quickshell) hides while such a window is on screen and slides in at the top edge.
+    local area = desktopWorkArea(win, nil, mode.maximize_hides_bar)
     if not area then return end
     placeWindow(win, area)
 end
@@ -259,9 +263,9 @@ if mode.floating and mode.snap_zones then
     end
 
     local function zoneRect(name, win, mon)
+        if name == "maximize" then return desktopWorkArea(win, mon, mode.maximize_hides_bar) end
         local a = desktopWorkArea(win, mon)
         if not a then return nil end
-        if name == "maximize" then return a end
         -- Two windows side by side / stacked, with a gap, their borders and the lower one's title bar between
         local halfW = (a.w - a.gap - 2 * a.border) / 2
         local halfH = (a.h - a.gap - 2 * a.border - a.bar) / 2
