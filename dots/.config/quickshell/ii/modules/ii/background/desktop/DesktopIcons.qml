@@ -585,11 +585,21 @@ Item {
     // Files go to the clipboard as a text/uri-list, so Dolphin and other file managers can paste
     // them, and files copied there can be pasted on the desktop. "Cut" is remembered here (the
     // icons are dimmed) and turns the next paste into a move.
+    // Cut only turns into a move when pasted on the desktop (Dolphin gets a normal copy, as the
+    // clipboard can only carry one format here). Copying anything else ends the cut.
     property var cutPaths: []
+    property real cutAt: 0
+    Connections {
+        target: Quickshell
+        function onClipboardTextChanged() {
+            if (root.cutPaths.length > 0 && Date.now() - root.cutAt > 1500) root.cutPaths = [];
+        }
+    }
     function copyFiles(items, cut) {
         const paths = items.map(i => i.path).filter(p => p !== "");
         if (paths.length === 0) return;
         root.cutPaths = cut ? paths : [];
+        root.cutAt = Date.now();
         Quickshell.execDetached(["bash", "-c", 'printf "%s" "$1" | wl-copy --type text/uri-list', "copy",
             paths.map(p => root.fileUrl(p)).join("\r\n") + "\r\n"]);
     }
@@ -599,8 +609,9 @@ Item {
         root.runCapture(["bash", "-c",
             't="$(wl-paste --list-types 2>/dev/null)"; mode=copy; '
             + 'if printf "%s\\n" "$t" | grep -qx "application/x-kde-cutselection" && [ "$(wl-paste --no-newline --type application/x-kde-cutselection 2>/dev/null)" = 1 ]; then mode=cut; fi; '
-            + 'if printf "%s\\n" "$t" | grep -qx "text/uri-list"; then echo "$mode"; wl-paste --no-newline --type text/uri-list; '
-            + 'elif printf "%s\\n" "$t" | grep -qx "x-special/gnome-copied-files"; then wl-paste --no-newline --type x-special/gnome-copied-files; fi'],
+            // GNOME's format comes first: its first line says "copy" or "cut"
+            + 'if printf "%s\\n" "$t" | grep -qx "x-special/gnome-copied-files"; then wl-paste --no-newline --type x-special/gnome-copied-files; '
+            + 'elif printf "%s\\n" "$t" | grep -qx "text/uri-list"; then echo "$mode"; wl-paste --no-newline --type text/uri-list; fi'],
             out => {
                 const lines = out.split(/\r?\n/).map(l => l.trim()).filter(l => l !== "");
                 if (lines.length === 0) return;
@@ -648,6 +659,16 @@ Item {
                 } else {
                     root.pushUndo({ type: "created", label: Translation.tr("Copy to desktop"), paths: lines });
                 }
+                // Thumbnails tried while the file was still being written failed: try again now
+                const done = mode === "move" ? lines.map(l => l.split("\t")[1] ?? "") : lines;
+                const thumbs = Object.assign({}, root.thumbnails);
+                let retry = false;
+                for (const dest of done) {
+                    if (thumbs[dest] !== undefined) { delete thumbs[dest]; retry = true; }
+                }
+                if (retry) root.thumbnails = thumbs;
+                for (const dest of done)
+                    if (root.isThumbnailable(dest)) root.requestThumbnail(dest);
                 // Pasted copies get their final names only now
                 if (positioned && mode === "unique")
                     root.placeDroppedFiles(lines.map(p => p.substring(p.lastIndexOf("/") + 1)), x, y);
@@ -687,13 +708,20 @@ Item {
     property var thumbnails: ({}) // path -> thumbnail file
     property var thumbnailQueue: []
     property bool thumbnailBusy: false
+    property string thumbnailCurrent: ""
+    readonly property var thumbnailSuffixes: ["mp4", "mkv", "webm", "mov", "avi", "m4v", "wmv", "flv", "pdf"]
+    function isThumbnailable(path) {
+        const name = path.substring(path.lastIndexOf("/") + 1);
+        const dot = name.lastIndexOf(".");
+        return dot > 0 && root.thumbnailSuffixes.indexOf(name.slice(dot + 1).toLowerCase()) !== -1;
+    }
     function requestThumbnail(path) {
-        if (path === "" || root.thumbnails[path] !== undefined || root.thumbnailQueue.indexOf(path) !== -1) return;
+        if (path === "" || path === root.thumbnailCurrent || root.thumbnails[path] !== undefined || root.thumbnailQueue.indexOf(path) !== -1) return;
         root.thumbnailQueue = root.thumbnailQueue.concat([path]);
         root.nextThumbnail();
     }
     readonly property string thumbnailScript: 'f="$1"; '
-        + 'uri="$(python3 -c "import sys, urllib.parse; print(\\"file://\\" + urllib.parse.quote(sys.argv[1], safe=\\"/-_.!~*()&=+\\$,;:@\\x27\\"))" "$f")"; '
+        + 'uri="$(python3 -c "import sys, urllib.parse; print(\\"file://\\" + urllib.parse.quote(sys.argv[1], safe=\\"/-_.!~*()&=+\\$,;:@\\x27\\"))" "$f")"; [ -n "$uri" ] || exit 0; '
         + 'md5="$(printf "%s" "$uri" | md5sum | cut -d" " -f1)"; '
         + 'for t in "${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails/large/$md5.png" "${XDG_CACHE_HOME:-$HOME/.cache}/thumbnails/normal/$md5.png"; do '
         + '  if [ -s "$t" ] && [ "$t" -nt "$f" ]; then printf "%s" "$t"; exit 0; fi; done; '
@@ -710,11 +738,13 @@ Item {
         const path = root.thumbnailQueue[0];
         root.thumbnailQueue = root.thumbnailQueue.slice(1);
         root.thumbnailBusy = true;
+        root.thumbnailCurrent = path;
         root.runCapture(["timeout", "-k", "2", "20", "bash", "-c", root.thumbnailScript, "thumb", path], out => {
             const result = Object.assign({}, root.thumbnails);
             result[path] = out.trim(); // "" = no thumbnail (keeps the normal icon, not retried)
             root.thumbnails = result;
             root.thumbnailBusy = false;
+            root.thumbnailCurrent = "";
             root.nextThumbnail();
         });
     }

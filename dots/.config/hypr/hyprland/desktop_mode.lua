@@ -131,7 +131,10 @@ end
 local function placeWindow(win, rect)
     local x, y = math.floor(rect.x), math.floor(rect.y)
     local saved = maximizedGeometry[win.address]
-    if saved then
+    -- Keep the original geometry only while the window is still where it was snapped/maximized;
+    -- if it was moved away and resized since, its current geometry is the one to come back to
+    local at = win.at or { x = 0, y = 0 }
+    if saved and math.abs(at.x - saved.mx) <= 4 and math.abs(at.y - saved.my) <= 4 then
         saved.mx, saved.my = x, y
     else
         maximizedGeometry[win.address] = {
@@ -277,16 +280,23 @@ if mode.floating and mode.snap_zones then
         return r
     end
 
+    -- Each IPC call is its own process, so calls can arrive out of order: they carry a sequence
+    -- number and the overlay ignores older ones. Coordinates are sent offset by +100000 so a
+    -- monitor left of/above the origin never produces a "-123" that looks like an option.
+    local OFFSET = 100000
+    local seq = 0
     local function showPreview(r)
         -- Outline of the whole window: content plus its title bar and borders
         local b, bar = r.border or 0, r.bar or 0
-        hl.exec_cmd(string.format("qs -c $qsConfig ipc call snapPreview show %d %d %d %d",
-            math.floor(r.x - b), math.floor(r.y - bar - b), math.floor(r.w + 2 * b), math.floor(r.h + bar + 2 * b)))
+        seq = seq + 1
+        hl.exec_cmd(string.format("qs -c $qsConfig ipc call snapPreview show %d %d %d %d %d", seq,
+            math.floor(r.x - b) + OFFSET, math.floor(r.y - bar - b) + OFFSET, math.floor(r.w + 2 * b), math.floor(r.h + bar + 2 * b)))
         previewShown = true
     end
     local function hidePreview()
         if previewShown then
-            hl.exec_cmd("qs -c $qsConfig ipc call snapPreview hide")
+            seq = seq + 1
+            hl.exec_cmd(string.format("qs -c $qsConfig ipc call snapPreview hide %d", seq))
             previewShown = false
         end
     end
@@ -301,8 +311,9 @@ if mode.floating and mode.snap_zones then
             return
         end
 
+        local size = win.size or { x = 0, y = 0 }
         if not prev or prev.addr ~= win.address then
-            prev = { addr = win.address, x = win.at.x, y = win.at.y, cx = cursor.x, cy = cursor.y }
+            prev = { addr = win.address, x = win.at.x, y = win.at.y, w = size.x, h = size.y, cx = cursor.x, cy = cursor.y }
             lastDragMove, zone = -1e9, nil
             hidePreview()
             return
@@ -311,14 +322,17 @@ if mode.floating and mode.snap_zones then
         -- its own means it was let go. Both still (e.g. pushing against the screen edge) keeps
         -- the state. Comparing movement rather than the exact cursor offset also works while
         -- Hyprland's edge snapping nudges the window during the drag.
-        local windowMoved = win.at.x ~= prev.x or win.at.y ~= prev.y
-        local cursorMoved = cursor.x ~= prev.cx or cursor.y ~= prev.cy
+        -- A resize from the left/top border also moves the window with the cursor: only count it
+        -- as a drag while the size stays the same.
+        local resized = size.x ~= prev.w or size.y ~= prev.h
+        local windowMoved = (win.at.x ~= prev.x or win.at.y ~= prev.y) and not resized
+        local cursorMoved = math.abs(cursor.x - prev.cx) > 2 or math.abs(cursor.y - prev.cy) > 2
         if windowMoved and cursorMoved then
             lastDragMove = now
-        elseif cursorMoved then
+        elseif cursorMoved or resized then
             lastDragMove = -1e9
         end
-        prev.x, prev.y, prev.cx, prev.cy = win.at.x, win.at.y, cursor.x, cursor.y
+        prev.x, prev.y, prev.w, prev.h, prev.cx, prev.cy = win.at.x, win.at.y, size.x, size.y, cursor.x, cursor.y
 
         local mon = hl.get_monitor_at_cursor()
         local newZone = (now - lastDragMove < 1500 and mon) and zoneAt(cursor, mon) or nil
@@ -326,6 +340,9 @@ if mode.floating and mode.snap_zones then
             zone = newZone
             zoneSince = now
             hidePreview()
+        elseif cursorMoved then
+            -- Snapping needs a pause: sliding along the edge keeps restarting the wait
+            zoneSince = now
         end
         if not zone then return end
 
@@ -397,9 +414,12 @@ if mode.auto_game_mode then
     hl.on("window.close", forget)
     hl.on("window.destroy", forget)
 
-    -- After a config reload a game may already be fullscreen
-    for _, win in ipairs(hl.get_windows() or {}) do
-        if isFullscreen(win) and win.address then fullscreenWindows[win.address] = true end
-    end
-    update()
+    -- After a config reload a game may already be fullscreen. Checked once the whole config has
+    -- been read, so later files (custom, shell overrides) are part of the values saved/restored.
+    hl.timer(function()
+        for _, win in ipairs(hl.get_windows() or {}) do
+            if isFullscreen(win) and win.address then fullscreenWindows[win.address] = true end
+        end
+        update()
+    end, { timeout = 1, type = "oneshot" })
 end

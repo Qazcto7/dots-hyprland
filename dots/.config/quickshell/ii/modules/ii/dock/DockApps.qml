@@ -22,6 +22,8 @@ Item {
     property bool buttonHovered: false
     property bool requestDockShow: previewPopup.show || appMenu.visible
 
+    property bool reordering: false // a pinned icon is being dragged to a new place
+
     // ---- Right-click menu of an app ----
     property Item menuButton: null
     function openMenu(button) {
@@ -55,6 +57,7 @@ Item {
         id: listView
         spacing: 2
         orientation: ListView.Horizontal
+        interactive: false // icons are dragged to reorder them, not to scroll the dock
         anchors {
             top: parent.top
             bottom: parent.bottom
@@ -327,6 +330,7 @@ Item {
                     materialIcon: "keep"
                     mainText: appMenu.pinned ? Translation.tr("Unpin from dock") : Translation.tr("Pin to dock")
                     onClicked: {
+                        if (!appMenu.app) return;
                         const id = appMenu.app.appId;
                         root.closeMenu();
                         TaskbarApps.togglePin(id);

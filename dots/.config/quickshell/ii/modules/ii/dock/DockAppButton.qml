@@ -42,7 +42,9 @@ DockButton {
 
     // Imperative update (not a binding) so our own width change can't cause a binding loop
     function updateMagnify() {
-        if (isSeparator || !magnifyEnabled || !appListRoot || !appListRoot.hovering) {
+        // No magnification while an icon is dragged to a new place: equal widths keep the
+        // drop position predictable
+        if (isSeparator || !magnifyEnabled || !appListRoot || !appListRoot.hovering || appListRoot.reordering) {
             root.magnify = 1;
             return;
         }
@@ -56,6 +58,7 @@ DockButton {
         target: root.appListRoot
         function onHoverXChanged() { root.updateMagnify(); }
         function onHoveringChanged() { root.updateMagnify(); }
+        function onReorderingChanged() { root.updateMagnify(); }
     }
 
     // ---- Bounce while launching ----
@@ -199,6 +202,7 @@ DockButton {
         yAxis.enabled: false
         onActiveTranslationChanged: if (active) root.reorderShift = activeTranslation.x
         onActiveChanged: {
+            appListRoot.reordering = active;
             if (active) {
                 appListRoot.closeMenu();
                 return;

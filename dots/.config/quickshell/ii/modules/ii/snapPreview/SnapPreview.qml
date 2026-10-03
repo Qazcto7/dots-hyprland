@@ -10,8 +10,10 @@ import qs.modules.common.functions
 /**
  * Preview of where a dragged window will snap (half / quarter / maximized).
  * Shown and hidden by hyprland/desktop_mode.lua through IPC:
- *   qs -c ii ipc call snapPreview show <x> <y> <width> <height>   (global layout coordinates)
- *   qs -c ii ipc call snapPreview hide
+ *   qs -c ii ipc call snapPreview show <seq> <x+100000> <y+100000> <width> <height>
+ *   qs -c ii ipc call snapPreview hide <seq>
+ * (global layout coordinates, offset so they are never negative; calls with an older sequence
+ * number than the last one are ignored, as separate processes can arrive out of order)
  * Click-through: the window has an empty input region.
  */
 Scope {
@@ -23,15 +25,32 @@ Scope {
         root.target.x + root.target.width / 2 >= s.x && root.target.x + root.target.width / 2 < s.x + s.width
         && root.target.y + root.target.height / 2 >= s.y && root.target.y + root.target.height / 2 < s.y + s.height) ?? null
 
+    property int lastSeq: -1
+    readonly property int offset: 100000
+
     IpcHandler {
         target: "snapPreview"
 
-        function show(x: int, y: int, width: int, height: int): void {
-            root.target = Qt.rect(x, y, width, height);
+        function show(seq: int, x: int, y: int, width: int, height: int): void {
+            if (seq < root.lastSeq) return;
+            root.lastSeq = seq;
+            root.target = Qt.rect(x - root.offset, y - root.offset, width, height);
             root.shown = true;
+            watchdog.restart();
         }
-        function hide(): void {
+        function hide(seq: int): void {
+            if (seq < root.lastSeq) return;
+            root.lastSeq = seq;
             root.shown = false;
+        }
+    }
+    // Hyprland restarting (sequence back to 1) or a lost hide must not leave it on screen
+    Timer {
+        id: watchdog
+        interval: 3000
+        onTriggered: {
+            root.shown = false;
+            root.lastSeq = -1;
         }
     }
 
