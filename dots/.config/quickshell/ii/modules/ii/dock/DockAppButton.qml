@@ -128,27 +128,51 @@ DockButton {
         }
     }
 
+    // Plasma/Windows-like: click a running app to bring it to the front, click it again while it
+    // is the active window to minimize it. With several windows, clicks go through them in turn.
+    function windowTarget(toplevel) {
+        const address = toplevel?.HyprlandToplevel?.address;
+        return address ? `address:0x${address}` : "";
+    }
+    function minimize(toplevel) {
+        const target = root.windowTarget(toplevel);
+        if (target !== "")
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "special:minimized", follow = false, window = "${target}" })`);
+    }
+    function bringToFront(toplevel) {
+        const target = root.windowTarget(toplevel);
+        if (target === "") {
+            toplevel.activate();
+            return;
+        }
+        // Minimized windows live on the hidden "special:minimized" workspace: bring them back
+        // to the current workspace first
+        const client = HyprlandData.windowByAddress[target.slice("address:".length)];
+        if (client?.workspace?.name === "special:minimized") {
+            const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "${target}" })`);
+        }
+        Hyprland.dispatch(`hl.dsp.focus({ window = "${target}" })`);
+        // Focusing does not raise a floating window
+        Hyprland.dispatch(`hl.dsp.window.alter_zorder({ mode = "top", window = "${target}" })`);
+    }
+
     onClicked: {
-        if (appToplevel.toplevels.length === 0) {
+        const toplevels = appToplevel.toplevels;
+        if (toplevels.length === 0) {
             root.desktopEntry?.execute();
             if (Config.options?.dock.bounceOnLaunch ?? true)
                 bounceAnim.restart();
             return;
         }
-        lastFocused = (lastFocused + 1) % appToplevel.toplevels.length
-        const toplevel = appToplevel.toplevels[lastFocused];
-
-        // Minimized windows live on the hidden "special:minimized" workspace. Bring them back to the
-        // current workspace directly instead of relying on the activation request.
-        const address = toplevel.HyprlandToplevel?.address;
-        const client = address ? HyprlandData.windowByAddress[`0x${address}`] : null;
-        if (client?.workspace?.name === "special:minimized") {
-            const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
-            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "address:0x${address}" })`);
-            Hyprland.dispatch(`hl.dsp.focus({ window = "address:0x${address}" })`);
+        const activeIndex = toplevels.findIndex(t => t.activated);
+        if (toplevels.length === 1 && activeIndex === 0) {
+            root.minimize(toplevels[0]);
             return;
         }
-        toplevel.activate()
+        // Next window after the active one (or after the last one clicked)
+        lastFocused = ((activeIndex !== -1 ? activeIndex : lastFocused) + 1) % toplevels.length;
+        root.bringToFront(toplevels[lastFocused]);
     }
 
     middleClickAction: () => {
