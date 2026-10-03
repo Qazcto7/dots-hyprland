@@ -23,9 +23,11 @@ Singleton {
     readonly property bool snap: Config.options?.desktopMode.snapping ?? true
     readonly property bool kdeServices: Config.options?.desktopMode.kdeServices ?? true
     // The Alt+Tab switcher only exists in the "ii" panel family
+    readonly property bool snapZones: Config.options?.desktopMode.snapZones ?? true
+    readonly property bool autoGameMode: Config.options?.desktopMode.autoGameMode ?? true
     readonly property bool altTab: (Config.options?.desktopMode.altTab ?? true) && (Config.options?.panelFamily ?? "ii") === "ii"
 
-    readonly property string content: `return { floating = ${root.floating}, snap = ${root.snap}, kde_services = ${root.kdeServices}, alt_tab = ${root.altTab} }`
+    readonly property string content: `return { floating = ${root.floating}, snap = ${root.snap}, kde_services = ${root.kdeServices}, alt_tab = ${root.altTab}, snap_zones = ${root.snapZones}, auto_game_mode = ${root.autoGameMode} }`
 
     // Only the main shell writes the file. The settings app (a separate Quickshell process) also
     // creates this singleton when it shows these options, but never calls load().

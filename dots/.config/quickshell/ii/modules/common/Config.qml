@@ -258,6 +258,7 @@ Singleton {
                     property bool showDarkModeToggle: true
                     property bool showPerformanceProfileToggle: false
                     property bool showScreenRecord: false
+                    property bool showGameModeToggle: true // Automatic game mode on/off
                 }
                 property JsonObject workspaces: JsonObject {
                     property bool monochromeIcons: true
@@ -330,6 +331,8 @@ Singleton {
                 property bool desktopIcons: true // Icons of the desktop folder + right-click desktop menu
                 property bool quickLook: true // Space previews the selected desktop icons (like macOS Quick Look)
                 property bool altTab: true // Alt+Tab window switcher with live previews
+                property bool snapZones: true // Drag a window to a screen edge/corner: half/quarter/maximized (with preview)
+                property bool autoGameMode: true // No animations/blur/shadows while a window is fullscreen
             }
 
             property JsonObject startMenu: JsonObject {

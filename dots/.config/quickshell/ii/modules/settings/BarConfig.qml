@@ -251,6 +251,14 @@ ContentPage {
                     Config.options.bar.utilButtons.showScreenRecord = checked;
                 }
             }
+            ConfigSwitch {
+                buttonIcon: "sports_esports"
+                text: Translation.tr("Game mode toggle")
+                checked: Config.options.bar.utilButtons.showGameModeToggle
+                onCheckedChanged: {
+                    Config.options.bar.utilButtons.showGameModeToggle = checked;
+                }
+            }
         }
     }
 

@@ -708,5 +708,12 @@
   "Alt + Shift": "Alt + Shift",
   "Ctrl + Shift": "Ctrl + Shift",
   "Caps Lock": "Caps Lock",
-  "Don't change (Hyprland config)": "Değiştirme (Hyprland ayarı)"
+  "Don't change (Hyprland config)": "Değiştirme (Hyprland ayarı)",
+  "Snap zones (drag to edges)": "Kenara yaslama (sürükleyerek)",
+  "Drag a window to the left/right edge for half the screen, into a corner for a quarter, to the top to maximize. Hold it there a moment.": "Pencereyi sol/sağ kenara sürükleyince yarım ekran, köşeye çeyrek ekran, üst kenara tam ekran olur. Orada bir an tutun.",
+  "Automatic game mode": "Otomatik oyun modu",
+  "While a game or video is fullscreen, animations, blur and shadows are turned off for more FPS": "Bir oyun veya video tam ekranken daha fazla FPS için animasyonlar, bulanıklık ve gölgeler kapatılır",
+  "Automatic game mode: on": "Otomatik oyun modu: açık",
+  "Automatic game mode: off": "Otomatik oyun modu: kapalı",
+  "Game mode toggle": "Oyun modu düğmesi"
 }

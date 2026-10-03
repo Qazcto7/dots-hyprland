@@ -1,4 +1,5 @@
 import qs
+import qs.services
 import qs.modules.common
 import qs.modules.common.widgets
 import QtQuick
@@ -96,6 +97,31 @@ Item {
                     text: Pipewire.defaultAudioSource?.audio?.muted ? "mic_off" : "mic"
                     iconSize: Appearance.font.pixelSize.large
                     color: Appearance.colors.colOnLayer2
+                }
+            }
+        }
+
+        // Automatic game mode (no animations/blur/shadows while something is fullscreen).
+        // Filled while it is active right now.
+        Loader {
+            active: Config.options.bar.utilButtons.showGameModeToggle ?? true
+            visible: active
+            sourceComponent: CircleUtilButton {
+                id: gameModeButton
+                readonly property bool enabled_: Config.options.desktopMode.autoGameMode
+                readonly property bool activeNow: enabled_ && HyprlandData.windowList.some(w => ((w.fullscreen ?? 0) & 2) !== 0)
+                Layout.alignment: Qt.AlignVCenter
+                onClicked: Config.options.desktopMode.autoGameMode = !Config.options.desktopMode.autoGameMode
+                MaterialSymbol {
+                    horizontalAlignment: Qt.AlignHCenter
+                    fill: gameModeButton.activeNow ? 1 : 0
+                    text: gameModeButton.enabled_ ? "sports_esports" : "videogame_asset_off"
+                    iconSize: Appearance.font.pixelSize.large
+                    color: gameModeButton.activeNow ? Appearance.colors.colPrimary : Appearance.colors.colOnLayer2
+                    opacity: gameModeButton.enabled_ ? 1 : 0.6
+                }
+                StyledToolTip {
+                    text: gameModeButton.enabled_ ? Translation.tr("Automatic game mode: on") : Translation.tr("Automatic game mode: off")
                 }
             }
         }

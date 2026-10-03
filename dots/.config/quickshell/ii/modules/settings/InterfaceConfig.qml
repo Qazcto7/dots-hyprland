@@ -164,6 +164,31 @@ ContentPage {
         ConfigRow {
             uniform: true
             ConfigSwitch {
+                buttonIcon: "splitscreen_left"
+                text: Translation.tr("Snap zones (drag to edges)")
+                checked: Config.options.desktopMode.snapZones
+                onCheckedChanged: {
+                    Config.options.desktopMode.snapZones = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("Drag a window to the left/right edge for half the screen, into a corner for a quarter, to the top to maximize. Hold it there a moment.")
+                }
+            }
+            ConfigSwitch {
+                buttonIcon: "sports_esports"
+                text: Translation.tr("Automatic game mode")
+                checked: Config.options.desktopMode.autoGameMode
+                onCheckedChanged: {
+                    Config.options.desktopMode.autoGameMode = checked;
+                }
+                StyledToolTip {
+                    text: Translation.tr("While a game or video is fullscreen, animations, blur and shadows are turned off for more FPS")
+                }
+            }
+        }
+        ConfigRow {
+            uniform: true
+            ConfigSwitch {
                 buttonIcon: "border_outer"
                 text: Translation.tr("Window snapping")
                 checked: Config.options.desktopMode.snapping

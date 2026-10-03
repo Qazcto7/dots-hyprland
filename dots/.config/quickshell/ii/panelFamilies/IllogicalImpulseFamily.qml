@@ -21,6 +21,7 @@ import qs.modules.ii.screenTranslator
 import qs.modules.ii.sessionScreen
 import qs.modules.ii.sidebarLeft
 import qs.modules.ii.sidebarRight
+import qs.modules.ii.snapPreview
 import qs.modules.ii.startMenu
 import qs.modules.ii.overlay
 import qs.modules.ii.verticalBar
@@ -47,6 +48,7 @@ Scope {
     PanelLoader { component: SessionScreen {} }
     PanelLoader { component: SidebarLeft {} }
     PanelLoader { component: SidebarRight {} }
+    PanelLoader { extraCondition: Config.options.desktopMode.snapZones; component: SnapPreview {} }
     PanelLoader { extraCondition: Config.options.startMenu.enable; component: StartMenu {} }
     PanelLoader { extraCondition: Config.options.bar.vertical; component: VerticalBar {} }
     PanelLoader { component: WallpaperSelector {} }
