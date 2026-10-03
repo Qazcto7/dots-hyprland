@@ -1,7 +1,7 @@
 groups=(illogical-impulse)
 pkgname=illogical-impulse-basic
 pkgver=1.0
-pkgrel=3
+pkgrel=4
 pkgdesc='Illogical Impulse Basic Dependencies'
 arch=(any)
 license=(None)
@@ -9,6 +9,7 @@ depends=(
   bc
   coreutils
   cliphist
+  wl-clip-persist
   cmake
   curl
   wget

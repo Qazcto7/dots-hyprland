@@ -16,6 +16,11 @@ hl.on("hyprland.start", function ()
     -- Audio
     hl.exec_cmd("easyeffects --hide-window --service-mode")
 
+    -- Clipboard: keep copied content after the app it was copied from closes. On Wayland the
+    -- clipboard belongs to the app that copied; wl-clip-persist takes it over (text and images).
+    -- Only the regular clipboard: also persisting the selection (middle click) breaks selecting text.
+    hl.exec_cmd("command -v wl-clip-persist >/dev/null && wl-clip-persist --clipboard regular")
+
     -- Clipboard: history
     --hl.exec_cmd("wl-paste --watch cliphist store")
     hl.exec_cmd("wl-paste --type text --watch bash -c 'cliphist store && qs -c $qsConfig ipc call cliphistService update'")
