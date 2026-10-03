@@ -60,17 +60,33 @@ Scope {
         root.windows = [];
     }
 
+    // Switching waits a moment so the switcher's focus grab is gone first: while the grab is
+    // active Hyprland keeps keyboard focus on the switcher and the chosen window would not get it.
+    property var pendingWindow: null
     function commit() {
-        const win = root.selectedWindow;
+        root.pendingWindow = root.selectedWindow;
         root.close();
-        if (!win) return;
-        const address = win.address;
+        if (root.pendingWindow) switchTimer.restart();
+    }
+    function switchTo(win) {
+        const target = `address:${win.address}`;
         if (win.workspace?.name === "special:minimized") {
             // Same as the dock: bring a minimized window back to the current workspace
             const workspaceId = HyprlandData.activeWorkspace?.id ?? Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
-            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "address:${address}" })`);
+            Hyprland.dispatch(`hl.dsp.window.move({ workspace = "${workspaceId}", follow = false, window = "${target}" })`);
         }
-        Hyprland.dispatch(`hl.dsp.focus({ window = "address:${address}" })`);
+        Hyprland.dispatch(`hl.dsp.focus({ window = "${target}" })`);
+        // Focusing does not raise a floating window; bring it in front of the others
+        Hyprland.dispatch(`hl.dsp.window.alter_zorder({ mode = "top", window = "${target}" })`);
+    }
+    Timer {
+        id: switchTimer
+        interval: 60
+        onTriggered: {
+            const win = root.pendingWindow;
+            root.pendingWindow = null;
+            if (win) root.switchTo(win);
+        }
     }
 
     readonly property real thumbHeight: 130
