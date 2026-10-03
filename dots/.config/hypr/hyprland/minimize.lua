@@ -155,6 +155,75 @@ end)
 
 hl.bind("SUPER + H", function() desktop_minimize() end, { description = "Window: Minimize" })
 
+-- Show desktop (Plasma's Meta+D, macOS's F11): minimizes every window on the current workspace
+-- (animated); doing it again brings back the ones that are still minimized, where they were,
+-- and focuses the window that was active. With nothing left to bring back, a press minimizes
+-- what is on screen again.
+-- Kept in a file like the positions above, so it survives a Hyprland reload.
+local SHOWN_FILE = (os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/hypr-desktop-showdesktop-"
+    .. (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or "default")
+local function readShownDesktop()
+    local list = {}
+    local f = io.open(SHOWN_FILE, "r")
+    if f then
+        for line in f:lines() do
+            local addr, ws = line:match("^(%S+) (.+)$")
+            if addr then list[#list + 1] = { address = addr, workspace = ws } end
+        end
+        f:close()
+    end
+    return list
+end
+local function writeShownDesktop(list)
+    local f = io.open(SHOWN_FILE, "w")
+    if not f then return end
+    for _, e in ipairs(list) do f:write(e.address .. " " .. e.workspace .. "\n") end
+    f:close()
+end
+
+function desktop_show_desktop()
+    local byAddress = {}
+    for _, w in ipairs(hl.get_windows() or {}) do byAddress[w.address] = w end
+
+    -- Second press: bring back the windows that are still minimized
+    local restored = nil
+    for _, e in ipairs(readShownDesktop()) do
+        local w = byAddress[e.address]
+        if w and w.workspace and w.workspace.name == MINIMIZED then
+            hl.dispatch(hl.dsp.window.move({ workspace = e.workspace, follow = false, window = w }))
+            restored = restored or w -- the list starts with the window that was active
+        end
+    end
+    writeShownDesktop({})
+    if restored then
+        hl.dispatch(hl.dsp.focus({ window = restored }))
+        return
+    end
+
+    -- First press: minimize everything on the focused monitor's workspace
+    local active = hl.get_active_window()
+    local mon = (active and active.monitor) or hl.get_monitor_at_cursor()
+    local ws = mon and mon.active_workspace
+    if not ws then return end
+    -- Named workspaces have negative ids, which would be read as a relative offset
+    local target = (ws.id or 0) > 0 and tostring(ws.id) or ("name:" .. ws.name)
+    local list = {}
+    for _, w in ipairs(hl.get_windows() or {}) do
+        if w.mapped and not w.hidden and w.workspace and w.workspace.id == ws.id then
+            local entry = { address = w.address, workspace = target }
+            if active and w.address == active.address then
+                table.insert(list, 1, entry)
+            else
+                list[#list + 1] = entry
+            end
+            desktop_minimize(w)
+        end
+    end
+    writeShownDesktop(list)
+end
+
+hl.bind("SUPER + CTRL + D", function() desktop_show_desktop() end, { description = "Desktop: Show desktop (again: bring the windows back)" })
+
 -- Activating a minimized window (dock, Alt+Tab, app activation request) brings it back to the
 -- current workspace of its monitor. Done on a short timer: focusing it makes Hyprland open the
 -- special workspace, and closing that again from inside the same event leaves Hyprland (and
