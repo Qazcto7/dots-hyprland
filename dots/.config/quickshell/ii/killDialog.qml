@@ -52,6 +52,7 @@ ApplicationWindow {
         id: conflictGroup
         required property list<string> programs
         required property string description
+        property bool check: true // false: never listed
         visible: false
         onVisibleChanged: {
             conflictCount += visible ? 1 : -1
@@ -60,7 +61,7 @@ ApplicationWindow {
         signal alwaysSelected()
 
         Process {
-            running: true
+            running: conflictGroup.check
             command: ["pidof", ...conflictGroup.programs]
             onExited: (exitCode, exitStatus) => {
                 if (exitCode === 0) {
@@ -179,6 +180,8 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignHCenter
                     Layout.fillHeight: false
                     programs: ["kded6"]
+                    // Desktop mode's "KDE services" runs kded6 on purpose (tray watcher unloaded)
+                    check: !(Config.options?.desktopMode?.kdeServices ?? true)
                     description: Translation.tr("Conflicts with the shell's system tray implementation")
                     onAlwaysSelected: Config.options.conflictKiller.autoKillTrays = true
                 }
