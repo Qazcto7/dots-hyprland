@@ -57,6 +57,23 @@ local function dockTarget(win)
     return math.floor(x), math.floor(math.max(y, at.y + 80))
 end
 
+-- After minimizing, the keyboard focus can stay on the hidden window (with click to focus
+-- nothing takes it). Give it to the most recently used window still on screen instead.
+local function focusNextWindow(win, mon)
+    local active = hl.get_active_window()
+    if not active or active.address ~= win.address then return end
+    local ws = mon and mon.active_workspace
+    if not ws then return end
+    local best
+    for _, w in ipairs(hl.get_windows() or {}) do
+        if w.address ~= win.address and w.mapped and not w.hidden and w.workspace and w.workspace.id == ws.id
+            and (not best or (tonumber(w.focus_history_id) or 9999) < (tonumber(best.focus_history_id) or 9999)) then
+            best = w
+        end
+    end
+    if best then hl.dispatch(hl.dsp.focus({ window = best })) end
+end
+
 local function animated(win)
     local enabled = hl.get_config("animations:enabled")
     return win.floating and (tonumber(win.fullscreen) or 0) == 0
@@ -69,7 +86,9 @@ function desktop_minimize(win, delay_ms)
     local function hide()
         animating[win.address] = nil
         if win.address and win.workspace and win.workspace.name ~= MINIMIZED then
+            local mon = win.monitor
             hl.dispatch(hl.dsp.window.move({ workspace = MINIMIZED, follow = false, window = win }))
+            hl.timer(function() focusNextWindow(win, mon) end, { timeout = 1, type = "oneshot" })
         end
     end
     local function go()

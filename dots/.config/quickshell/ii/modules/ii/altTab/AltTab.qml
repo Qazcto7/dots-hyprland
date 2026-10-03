@@ -48,7 +48,9 @@ Scope {
             }
         }
         const active = ToplevelManager.activeToplevel;
-        if (front === "" && active?.activated && active.HyprlandToplevel)
+        // (a minimized window can still be reported as active: it isn't the current one)
+        if (front === "" && active?.activated && active.HyprlandToplevel
+                && HyprlandData.windowByAddress[`0x${active.HyprlandToplevel.address}`]?.workspace?.name !== "special:minimized")
             front = `0x${active.HyprlandToplevel.address}`;
 
         const list = root.collectWindows();

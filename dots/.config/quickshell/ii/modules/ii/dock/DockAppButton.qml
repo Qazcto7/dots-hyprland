@@ -16,7 +16,7 @@ DockButton {
     property real iconSize: 35
     property real countDotWidth: 10
     property real countDotHeight: 4
-    property bool appIsActive: appToplevel.toplevels.find(t => (t.activated == true)) !== undefined
+    property bool appIsActive: appToplevel.toplevels.find(t => (t.activated == true) && !root.isMinimized(t)) !== undefined
 
     readonly property bool isSeparator: appToplevel.appId === "SEPARATOR"
     property var desktopEntry: DesktopEntries.heuristicLookup(appToplevel.appId)
@@ -137,6 +137,10 @@ DockButton {
         const address = toplevel?.HyprlandToplevel?.address;
         return address ? `address:0x${address}` : "";
     }
+    function isMinimized(toplevel) {
+        const address = toplevel?.HyprlandToplevel?.address;
+        return !!address && HyprlandData.windowByAddress[`0x${address}`]?.workspace?.name === "special:minimized";
+    }
     function minimize(toplevel) {
         const address = toplevel?.HyprlandToplevel?.address;
         // Through Hyprland's Lua config (minimize.lua), which animates it like the title bar button
@@ -171,7 +175,10 @@ DockButton {
                 bounceAnim.restart();
             return;
         }
-        const activeIndex = toplevels.findIndex(t => t.activated);
+        // A minimized window can still be reported as the active one (nothing else took the focus
+        // after it was hidden): it doesn't count, so the click brings it back instead of trying
+        // to minimize it again
+        const activeIndex = toplevels.findIndex(t => t.activated && !root.isMinimized(t));
         if (toplevels.length === 1 && activeIndex === 0) {
             root.minimize(toplevels[0]);
             return;
