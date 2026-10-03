@@ -190,30 +190,21 @@ hl.bind("SUPER + Apostrophe", hl.dsp.layout("splitratio +0.1"), { repeating = tr
 hl.bind("SUPER + ALT + Space", hl.dsp.window.float({ action = "toggle" }), { description = "Window: Float/Tile" })
 hl.bind("SUPER + D", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }),
     { description = "Window: Maximize" })
--- In Firefox, SUPER + F / SUPER + SHIFT + F go to the next / previous tab (Ctrl+Tab / Ctrl+Shift+Tab);
--- Firefox's own fullscreen stays on F11. Everywhere else SUPER + F toggles fullscreen.
--- A full key press (down + up): inside a key bind, send_shortcut only sends the "down" half,
--- which the app may ignore or start auto-repeating
-local function tapShortcut(mods, key)
-    hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "down" }))
-    hl.dispatch(hl.dsp.send_key_state({ mods = mods, key = key, state = "up" }))
-end
+-- In Firefox, SUPER + F is a "windowed fullscreen": the window covers the whole screen (the bar
+-- and dock hide, macOS-like; move the mouse to the top/bottom edge to show them) but Firefox stays
+-- in its normal mode, so tabs and the address bar remain usable. Firefox's own fullscreen is F11.
+-- Everywhere else SUPER + F toggles normal fullscreen.
 local function isFirefox(win)
     local class = string.lower((win and win.class) or "")
     return class == "firefox" or class == "org.mozilla.firefox" or class == "firefox-esr" or class == "librewolf"
 end
 hl.bind("SUPER + F", function()
     if isFirefox(hl.get_active_window()) then
-        tapShortcut("CTRL", "Tab")
+        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 2, client = 0, action = "toggle" }))
     else
         hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
     end
-end, { description = "Window: Fullscreen (Firefox: next tab)" })
-hl.bind("SUPER + SHIFT + F", function()
-    if isFirefox(hl.get_active_window()) then
-        tapShortcut("CTRL SHIFT", "Tab")
-    end
-end, { description = "Firefox: previous tab" })
+end, { description = "Window: Fullscreen (Firefox: windowed fullscreen)" })
 hl.bind("SUPER + ALT + F", hl.dsp.window.fullscreen_state({ internal = 0, client = 3, action = "toggle" }),
     { description = "Window: Fullscreen spoof" })
 hl.bind("SUPER + P", hl.dsp.window.pin(), { description = "Window: Pin" })

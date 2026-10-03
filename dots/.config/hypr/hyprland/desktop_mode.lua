@@ -372,9 +372,12 @@ if mode.auto_game_mode then
     local KEYS = { "animations:enabled", "decoration:blur:enabled", "decoration:shadow:enabled" }
 
     local function isFullscreen(win)
-        -- Internal fullscreen mode is a bit mask: 1 = maximized, 2 = fullscreen
+        -- Fullscreen modes are bit masks: 1 = maximized, 2 = fullscreen. The app itself must be
+        -- fullscreen too (a game, F11, a video), not just covering the screen like Firefox's
+        -- windowed fullscreen (SUPER + F), where you keep working normally.
         local fs = tonumber(win and win.fullscreen) or 0
-        return math.floor(fs / 2) % 2 == 1
+        local client = tonumber(win and win.fullscreen_client) or fs
+        return math.floor(fs / 2) % 2 == 1 and math.floor(client / 2) % 2 == 1
     end
     local function truthy(v)
         return v == true or v == 1 or v == "1" or v == "true"

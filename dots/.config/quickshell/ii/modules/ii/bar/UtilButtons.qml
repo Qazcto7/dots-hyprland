@@ -109,7 +109,8 @@ Item {
             sourceComponent: CircleUtilButton {
                 id: gameModeButton
                 readonly property bool enabled_: Config.options.desktopMode.autoGameMode
-                readonly property bool activeNow: enabled_ && HyprlandData.windowList.some(w => ((w.fullscreen ?? 0) & 2) !== 0)
+                // Like the game mode itself: the app must be fullscreen too (not Firefox's windowed fullscreen)
+                readonly property bool activeNow: enabled_ && HyprlandData.windowList.some(w => ((w.fullscreen ?? 0) & 2) !== 0 && ((w.fullscreenClient ?? w.fullscreen ?? 0) & 2) !== 0)
                 Layout.alignment: Qt.AlignVCenter
                 onClicked: Config.options.desktopMode.autoGameMode = !Config.options.desktopMode.autoGameMode
                 MaterialSymbol {
