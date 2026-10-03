@@ -490,7 +490,7 @@ Singleton {
             }
 
             property JsonObject resources: JsonObject {
-                property int updateInterval: 3000
+                property int updateInterval: 1000 // ms, RAM/swap/CPU in the bar
                 property int historyLength: 60
             }
 
