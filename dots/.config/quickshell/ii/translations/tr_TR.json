@@ -731,6 +731,7 @@
   "Empty trash (%1 items)": "Çöpü boşalt (%1 öğe)",
   "Trash is empty": "Çöp boş",
   "Trash in the dock": "Dock'ta çöp kutusu",
+  "Minimized": "Küçültüldü",
   "Click to focus": "Tıklayınca odaklan",
   "The keyboard goes to the window you click, not to the window under the mouse": "Klavye farenin altındaki pencereye değil, tıkladığın pencereye gider",
   "Hide when a window overlaps the dock": "Bir pencere dock'un üstüne gelince gizle",

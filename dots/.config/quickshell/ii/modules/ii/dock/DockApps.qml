@@ -182,12 +182,21 @@ Item {
                             id: windowButton
                             Layout.fillHeight: true
                             required property var modelData
+                            readonly property string address: windowButton.modelData?.HyprlandToplevel?.address ?? ""
+                            // Minimized windows live on the hidden "special:minimized" workspace
+                            readonly property bool minimized: windowButton.address !== ""
+                                && HyprlandData.windowByAddress[`0x${windowButton.address}`]?.workspace?.name === "special:minimized"
                             padding: 0
                             middleClickAction: () => {
                                 windowButton.modelData?.close();
                             }
                             onClicked: {
-                                windowButton.modelData?.activate();
+                                // Same as clicking the app: brings a minimized window back (animated)
+                                // and raises it in front of the other floating windows
+                                const button = root.lastHoveredButton;
+                                if (button?.bringToFront) button.bringToFront(windowButton.modelData);
+                                else windowButton.modelData?.activate();
+                                previewPopup.show = false;
                             }
                             contentItem: ColumnLayout {
                                 implicitWidth: screencopyView.implicitWidth
@@ -224,13 +233,16 @@ Item {
                                 Item {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    implicitHeight: screencopyView.height
-                                    implicitWidth: screencopyView.width
+                                    // Room for the app icon while there is no picture
+                                    implicitHeight: screencopyView.hasContent ? screencopyView.height : 110
+                                    implicitWidth: screencopyView.hasContent ? screencopyView.width : 180
                                     ScreencopyView {
                                         id: screencopyView
                                         anchors.centerIn: parent
                                         captureSource: windowButton.modelData
                                         live: true
+                                        // Minimized windows show their last picture, dimmed
+                                        opacity: windowButton.minimized ? 0.55 : 1
                                         paintCursor: true
                                         constraintSize: Qt.size(root.maxWindowPreviewWidth, root.maxWindowPreviewHeight)
                                         layer.enabled: true
@@ -239,6 +251,39 @@ Item {
                                                 width: screencopyView.width
                                                 height: screencopyView.height
                                                 radius: Appearance.rounding.small
+                                            }
+                                        }
+                                    }
+                                    // No picture yet (e.g. a window that was never drawn): the app icon
+                                    IconImage {
+                                        anchors.centerIn: parent
+                                        visible: !screencopyView.hasContent
+                                        implicitSize: 64
+                                        source: Quickshell.iconPath(AppSearch.guessIcon(root.lastHoveredButton?.appToplevel?.appId ?? ""), "image-missing")
+                                    }
+                                    // "Minimized" label
+                                    Rectangle {
+                                        visible: windowButton.minimized
+                                        anchors.left: parent.left
+                                        anchors.bottom: parent.bottom
+                                        anchors.margins: 6
+                                        radius: Appearance.rounding.full
+                                        color: ColorUtils.transparentize(Appearance.m3colors.m3surfaceContainerHighest, 0.1)
+                                        implicitWidth: minimizedRow.implicitWidth + 12
+                                        implicitHeight: minimizedRow.implicitHeight + 6
+                                        RowLayout {
+                                            id: minimizedRow
+                                            anchors.centerIn: parent
+                                            spacing: 4
+                                            MaterialSymbol {
+                                                text: "minimize"
+                                                iconSize: Appearance.font.pixelSize.small
+                                                color: Appearance.m3colors.m3onSurface
+                                            }
+                                            StyledText {
+                                                text: Translation.tr("Minimized")
+                                                font.pixelSize: Appearance.font.pixelSize.smaller
+                                                color: Appearance.m3colors.m3onSurface
                                             }
                                         }
                                     }
