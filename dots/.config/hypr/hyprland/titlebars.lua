@@ -41,7 +41,29 @@ hl.config({
 -- Maximize (button and double-click) calls desktop_toggle_maximize() from desktop_mode.lua,
 -- which needs to know how tall the bar above the window is.
 DESKTOP_TITLEBAR_HEIGHT = 36
+
+-- Apps that draw their own title bar with minimize/maximize/close (client-side decorations)
+-- get no hyprbars bar, otherwise they show two rows of buttons (e.g. Discord, Steam, Chrome,
+-- VS Code, GNOME apps). Exact window classes, plus every org.gnome.* app.
+local OWN_TITLEBAR_CLASSES = {
+    "discord", "vesktop", "WebCord", "legcord", "armcord",
+    "Spotify", "spotify", "steam", "obsidian", "Slack", "Element",
+    "code", "code-oss", "Code", "codium", "VSCodium",
+    "google-chrome", "chromium", "brave-browser", "microsoft-edge", "vivaldi-stable",
+}
 DESKTOP_TITLEBAR_EXCLUDED = {}
+local escaped = {}
+for _, class in ipairs(OWN_TITLEBAR_CLASSES) do
+    DESKTOP_TITLEBAR_EXCLUDED[class] = true
+    escaped[#escaped + 1] = (class:gsub("([%.%-])", "\\%1"))
+end
+hl.window_rule({ match = { class = "^(" .. table.concat(escaped, "|") .. "|org\\.gnome\\..*)$" }, ["hyprbars:no_bar"] = true })
+
+-- Used by desktop_mode.lua (maximize/snap geometry): does this window have a hyprbars bar?
+function desktop_has_titlebar(win)
+    local class = (win and win.class) or ""
+    return not (DESKTOP_TITLEBAR_EXCLUDED[class] or class:find("^org%.gnome%.") ~= nil)
+end
 
 -- Right alignment: the first button added is the rightmost one.
 local button_bg = "rgba(ffffff1f)"

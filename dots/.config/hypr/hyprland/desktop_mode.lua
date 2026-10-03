@@ -107,7 +107,7 @@ local function desktopWorkArea(win, mon, ignoreTop)
     local border = tonumber(hl.get_config("general:border_size")) or 1
     local gap = 6
     local bar = 0
-    if DESKTOP_TITLEBAR_HEIGHT and not (DESKTOP_TITLEBAR_EXCLUDED or {})[win.class] then
+    if DESKTOP_TITLEBAR_HEIGHT and (desktop_has_titlebar == nil or desktop_has_titlebar(win)) then
         bar = DESKTOP_TITLEBAR_HEIGHT
     end
     -- Rotated monitors (transform 1, 3, 5, 7) report width/height of the unrotated panel
