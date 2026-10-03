@@ -203,20 +203,23 @@ end
 -- interface (tabs, toolbars...). Works for every app. Used by the title bar's ◇ button and by
 -- SUPER + F; the title bar is not drawn while fullscreen, so SUPER + F (or the button's window
 -- being toggled again from the keyboard) brings it back.
-function desktop_windowed_fullscreen(win)
+local windowedFullscreen = {} -- address -> true while in windowed fullscreen
+
+-- enable: true / false, or nil to toggle
+function desktop_windowed_fullscreen(win, enable)
     win = win or hl.get_active_window()
-    if not win then return end
-    local internal = tonumber(win.fullscreen) or 0
-    if internal ~= 0 then
-        -- Any fullscreen/maximized state: back to a normal window
-        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = win }))
-    else
-        hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 2, client = 0, action = "set", window = win }))
+    if not win or not win.address then return end
+    if enable == nil then
+        -- Any fullscreen/maximized state counts as "on": the toggle brings back a normal window
+        enable = (tonumber(win.fullscreen) or 0) == 0
     end
+    windowedFullscreen[win.address] = enable or nil
+    hl.dispatch(hl.dsp.window.fullscreen_state({ internal = enable and 2 or 0, client = 0, action = "set", window = win }))
 end
 
 -- Forget saved geometry of closed windows
 hl.on("window.close", function(win)
+    if win and win.address then windowedFullscreen[win.address] = nil end
     if win and win.address and maximizedGeometry[win.address] then
         maximizedGeometry[win.address] = nil
         saveMaximizedGeometry()
@@ -228,12 +231,16 @@ if mode.floating then
     hl.unbind("SUPER + D")
     hl.bind("SUPER + D", function() desktop_toggle_maximize() end, { description = "Window: Maximize" })
 
+    -- An app's own maximize button (Discord, Steam, GNOME apps... and anything else asking to be
+    -- maximized) does the same as the title bar's ◇ button: windowed fullscreen, and the next
+    -- request goes back to normal. (Such apps think they are not maximized, so they ask again.)
     hl.on("window.fullscreen", function(win)
         if not win or not win.floating or win.fullscreen ~= FS_MAXIMIZED then return end
+        local wasWindowedFullscreen = windowedFullscreen[win.address] == true
         -- Let Hyprland finish its own fullscreen change before undoing it
         hl.timer(function()
             if not win.address or win.fullscreen ~= FS_MAXIMIZED then return end
-            desktop_toggle_maximize(win)
+            desktop_windowed_fullscreen(win, not wasWindowedFullscreen)
         end, { timeout = 30, type = "oneshot" })
     end)
 end
