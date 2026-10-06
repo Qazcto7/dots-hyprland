@@ -12,10 +12,18 @@ if mode.floating then
     -- position, and a center rule would override the PiP / screen-share placement rules.)
     hl.window_rule({ match = { class = ".*" }, float = true })
     hl.config({ cursor = { no_warps = true } }) -- Plasma-like: focusing a window never moves the mouse
-    -- Plasma-like click to focus: the keyboard stays with the window that was clicked (or just
-    -- opened) instead of following the mouse, so e.g. a new terminal under a big window keeps the
-    -- focus when the mouse moves. Scrolling still goes to the window under the mouse.
-    if mode.click_to_focus then
+    -- Focus policy. Default: focus follows the mouse, tuned for floating windows:
+    --  * float_switch_override_focus = 2: the stock value only follows the mouse between tiled
+    --    and floating windows, so with every window floating, hovering changed nothing.
+    --  * mouse_refocus = false: focus only changes when the pointer crosses a window border, so
+    --    a window that just opened over (part of) another one keeps the focus until the mouse
+    --    really moves onto another window.
+    -- A click always focuses the clicked window. With "focus follows mouse" off it is click to
+    -- focus instead (follow_mouse = 2): the keyboard stays with the clicked window and hovering
+    -- only decides where scrolling goes.
+    if mode.hover_focus then
+        hl.config({ input = { follow_mouse = 1, mouse_refocus = false, float_switch_override_focus = 2 } })
+    else
         hl.config({ input = { follow_mouse = 2 } })
     end
 end
@@ -273,6 +281,31 @@ if mode.floating then
         end
         hl.dispatch(hl.dsp.window.move({ x = nx, y = ny, window = win }))
     end
+
+    -- Closing the focused window can leave nothing focused, and the keyboard then goes nowhere
+    -- until the next click. Give the focus to the most recently used window still on screen.
+    hl.on("window.close", function(closed)
+        local address = closed and closed.address
+        local active = hl.get_active_window()
+        if not address or not active or active.address ~= address then return end
+        hl.timer(function()
+            pcall(function()
+                local now = hl.get_active_window()
+                if now and now.address ~= address and now.mapped and not now.hidden then return end
+                local mon = hl.get_monitor_at_cursor() or hl.get_active_monitor()
+                local ws = mon and mon.active_workspace
+                if not ws then return end
+                local best
+                for _, w in ipairs(hl.get_windows() or {}) do
+                    if w.address ~= address and w.mapped and not w.hidden and w.workspace and w.workspace.id == ws.id
+                        and (not best or (tonumber(w.focus_history_id) or 9999) < (tonumber(best.focus_history_id) or 9999)) then
+                        best = w
+                    end
+                end
+                if best then hl.dispatch(hl.dsp.focus({ window = best })) end
+            end)
+        end, { timeout = 30, type = "oneshot" })
+    end)
 
     hl.on("window.open", function(win)
         fitOnScreen(win)
