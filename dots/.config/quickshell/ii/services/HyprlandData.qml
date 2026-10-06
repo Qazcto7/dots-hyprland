@@ -169,13 +169,33 @@ Singleton {
         updateAll();
     }
 
+    // Every hyprctl query is a new process, and Hyprland answers it on its main thread (the same
+    // one that renders, handles input and runs the Lua config). Querying once per event meant a
+    // burst of events (a terminal title changing during a build, windows opening, a fullscreen
+    // toggle) started four or five processes per event, over and over, exactly when the system
+    // is already busy. Events now only schedule one refresh: the first event starts a short
+    // timer and everything arriving before it fires is covered by that one refresh.
+    // Title changes are not time critical (and the noisiest), so they wait longer.
+    readonly property var ignoredEvents: ["openlayer", "closelayer", "screencast"]
+    readonly property var slowEvents: ["windowtitle", "windowtitlev2"]
+
+    Timer {
+        id: refreshTimer
+        repeat: false
+        onTriggered: root.updateAll()
+    }
+
     Connections {
         target: Hyprland
 
         function onRawEvent(event) {
             // console.log("Hyprland raw event:", event.name);
-            if (["openlayer", "closelayer", "screencast"].includes(event.name)) return;
-            updateAll()
+            if (root.ignoredEvents.includes(event.name)) return;
+            const delay = root.slowEvents.includes(event.name) ? 400 : 40;
+            // A pending fast refresh is never pushed back, and a slow one is brought forward
+            if (refreshTimer.running && refreshTimer.interval <= delay) return;
+            refreshTimer.interval = delay;
+            refreshTimer.restart();
         }
     }
 
