@@ -307,6 +307,26 @@ if mode.floating then
         end, { timeout = 30, type = "oneshot" })
     end)
 
+    -- Raise: a floating window that has had the focus for a moment comes in front of the others,
+    -- so the focused window is never hidden behind one that does not have the focus. Hyprland
+    -- itself only raises a floating window on some clicks and never on hover. The short delay
+    -- keeps windows the mouse merely sweeps across from popping up. Alt+Tab and the dock raise
+    -- the windows they focus on their own.
+    local RAISE_DELAY_MS = 150
+    hl.on("window.active", function(win)
+        local address = win and win.address
+        if not address then return end
+        hl.timer(function()
+            pcall(function()
+                local active = hl.get_active_window()
+                if not active or active.address ~= address or not active.floating then return end
+                if (tonumber(active.fullscreen) or 0) ~= 0 then return end
+                if active.workspace and active.workspace.name == "special:minimized" then return end
+                hl.dispatch(hl.dsp.window.alter_zorder({ mode = "top", window = active }))
+            end)
+        end, { timeout = RAISE_DELAY_MS, type = "oneshot" })
+    end)
+
     hl.on("window.open", function(win)
         fitOnScreen(win)
         -- Some apps set their real size only after the first frame: check once more
