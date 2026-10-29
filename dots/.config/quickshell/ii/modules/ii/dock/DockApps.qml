@@ -44,7 +44,6 @@ Item {
     }
 
     Layout.fillHeight: true
-    Layout.topMargin: Appearance.sizes.hyprlandGapsOut
     implicitWidth: listView.implicitWidth
 
     function popupCenterXForButton(button) {
@@ -64,12 +63,6 @@ Item {
         }
         implicitWidth: contentWidth
 
-        // Not while magnifying: the dock width must follow the icons right away
-        Behavior on implicitWidth {
-            enabled: !root.hovering
-            animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-        }
-
         model: ScriptModel {
             objectProp: "appId"
             values: TaskbarApps.apps
@@ -79,14 +72,14 @@ Item {
             appToplevel: modelData
             appListRoot: root
 
-            topInset: Appearance.sizes.hyprlandGapsOut + root.buttonPadding
-            bottomInset: Appearance.sizes.hyprlandGapsOut + root.buttonPadding
+            topInset: root.buttonPadding
+            bottomInset: root.buttonPadding
         }
     }
 
     PopupWindow {
         id: previewPopup
-        property var appTopLevel: root.lastHoveredButton?.appToplevel
+        property var appTopLevel: previewPopup.show ? root.lastHoveredButton?.appToplevel : null
 
         property bool shouldShow: !appMenu.visible && (popupMouseArea.containsMouse || root.buttonHovered) && appTopLevel && appTopLevel.toplevels && appTopLevel.toplevels.length > 0
 

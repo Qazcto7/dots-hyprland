@@ -32,13 +32,16 @@ DockButton {
     readonly property real maxMagnify: magnifyEnabled ? Math.max(1, Config.options?.dock.magnificationScale ?? 1.6) : 1
     readonly property real baseWidth: implicitHeight - topInset - bottomInset
     property real magnify: 1
+
     Behavior on magnify {
+        enabled: !appListRoot?.hovering
         NumberAnimation {
-            duration: 110
+            duration: 90
             easing.type: Easing.OutCubic
         }
     }
-    implicitWidth: isSeparator ? 1 : baseWidth * magnify
+    // Fixed base width to keep the Wayland layer surface width stable and prevent stutter/lag
+    implicitWidth: isSeparator ? 1 : baseWidth
 
     // Imperative update (not a binding) so our own width change can't cause a binding loop
     function updateMagnify() {
@@ -95,7 +98,8 @@ DockButton {
         target: DesktopEntries
 
         function onApplicationsChanged() {
-            root.desktopEntry = DesktopEntries.heuristicLookup(appToplevel.appId);
+            if (root.appToplevel?.appId)
+                root.desktopEntry = DesktopEntries.heuristicLookup(root.appToplevel.appId);
         }
     }
 
@@ -199,7 +203,7 @@ DockButton {
 
     // ---- Drag pinned apps sideways to reorder them ----
     property real reorderShift: 0
-    z: reorderDrag.active ? 10 : 0
+    z: reorderDrag.active ? 10 : (magnify > 1.05 ? Math.round(magnify * 10) : 0)
     transform: Translate {
         x: reorderDrag.active ? root.reorderShift : 0
     }
@@ -261,7 +265,7 @@ DockButton {
                     anchors.fill: parent
                     active: !root.isSeparator
                     sourceComponent: IconImage {
-                        source: Quickshell.iconPath(AppSearch.guessIcon(appToplevel.appId), "image-missing")
+                        source: Quickshell.iconPath(AppSearch.guessIcon(root.appToplevel?.appId ?? ""), "image-missing")
                         implicitSize: iconContainer.renderSize
                     }
                 }
