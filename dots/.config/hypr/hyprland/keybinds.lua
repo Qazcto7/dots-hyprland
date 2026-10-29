@@ -9,11 +9,12 @@ local hyprScripts = "$HOME/.config/hypr/hyprland/scripts"
 local qsIpcCall = "qs -c $qsConfig ipc call"
 local qsIsAlive = qsIpcCall .. " TEST_ALIVE"
 
-hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
+-- hl.bind("SUPER + SUPER_L", hl.dsp.global("quickshell:searchToggleRelease"), { description = "Shell: Toggle search" })
 hl.bind("ALT + F1", hl.dsp.global("quickshell:startMenuToggle"), { description = "Shell: Toggle start menu" })
-hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"))
-hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
-hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
+hl.bind("SUPER + Space", hl.dsp.global("quickshell:startMenuToggle"), { description = "Shell: Toggle start menu" })
+-- hl.bind("SUPER + SUPER_R", hl.dsp.global("quickshell:searchToggleRelease"))
+-- hl.bind("SUPER + SUPER_L", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
+-- hl.bind("SUPER + SUPER_R", hl.dsp.exec_cmd(qsIsAlive .. " || pkill fuzzel || fuzzel"))
 
 hl.bind("SUPER_L", hl.dsp.global("quickshell:workspaceNumber"), { ignore_mods = true, transparent = true })
 hl.bind("SUPER_R", hl.dsp.global("quickshell:workspaceNumber"), { ignore_mods = true, transparent = true })

@@ -60,21 +60,17 @@ Scope {
                 // also uses the bar's space). Only for a bar at the top.
                 readonly property bool maximizedActive: (Config?.options.desktopMode.maximizeHidesBar ?? true)
                     && !(Config?.options.bar.bottom ?? false) && HyprlandData.hasMaximizedOn(barRoot.screen?.name ?? "")
-                readonly property bool coveredActive: fullscreenActive || maximizedActive
-                // Plasma's "dodge windows": a window (or its title bar) reaching into the bar hides
-                // it; it slides in at the screen edge. The bar keeps its reserved space meanwhile, so
-                // only windows dragged or sized into it do this.
+                readonly property bool coveredActive: fullscreenActive
                 readonly property int reservedHeight: Appearance.sizes.baseBarHeight + (Appearance.barCornerStyle === 1 ? Appearance.sizes.hyprlandGapsOut : 0)
-                readonly property bool overlappedActive: (Config?.options.bar.hideOverWindows ?? true)
-                    && HyprlandData.hasWindowInStrip(barRoot.screen?.name ?? "", !(Config?.options.bar.bottom ?? false), barRoot.reservedHeight)
-                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive || overlappedActive
+                readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
                 WlrLayershell.layer: coveredActive ? WlrLayer.Overlay : WlrLayer.Top
 
-                // Hidden only because a window overlaps it: keep the space (new windows still open below it)
+                // Hidden only in fullscreen or when autohide is enabled
                 readonly property bool configuredAutoHide: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
                 exclusiveZone: (barRoot.configuredAutoHide && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
                     barRoot.reservedHeight
                 exclusionMode: exclusiveZone > 0 ? ExclusionMode.Normal : ExclusionMode.Ignore
+                visible: GlobalStates.barOpen && (!barRoot.autoHideActive || barRoot.mustShow)
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + (roundDecorators.active ? Appearance.rounding.screenRounding : 0)
                 mask: Region {
