@@ -70,11 +70,11 @@ Scope {
                 readonly property bool autoHideActive: (Config?.options.bar.autoHide.enable ?? false) || coveredActive || overlappedActive
                 WlrLayershell.layer: coveredActive ? WlrLayer.Overlay : WlrLayer.Top
 
-                exclusionMode: ExclusionMode.Ignore
                 // Hidden only because a window overlaps it: keep the space (new windows still open below it)
                 readonly property bool configuredAutoHide: (Config?.options.bar.autoHide.enable ?? false) || coveredActive
                 exclusiveZone: (barRoot.configuredAutoHide && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
                     barRoot.reservedHeight
+                exclusionMode: exclusiveZone > 0 ? ExclusionMode.Normal : ExclusionMode.Ignore
                 WlrLayershell.namespace: "quickshell:bar"
                 implicitHeight: Appearance.sizes.barHeight + (roundDecorators.active ? Appearance.rounding.screenRounding : 0)
                 mask: Region {

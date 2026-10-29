@@ -45,10 +45,11 @@ Singleton {
     readonly property var ownTitlebarClasses: ["discord", "vesktop", "WebCord", "legcord", "armcord",
         "Spotify", "spotify", "steam", "obsidian", "Slack", "Element",
         "code", "code-oss", "Code", "codium", "VSCodium"]
-    readonly property int titlebarHeight: 36 // DESKTOP_TITLEBAR_HEIGHT in titlebars.lua
+    property bool hasHyprbars: false
+    readonly property int titlebarHeight: hasHyprbars ? 36 : 0 // DESKTOP_TITLEBAR_HEIGHT in titlebars.lua
     // Height of the hyprbars title bar drawn above this window (0 if it has none)
     function titlebarHeightOf(w) {
-        if (!w?.floating || ((w.fullscreen ?? 0) !== 0) || !(Config.options?.desktopMode?.floatingWindows ?? true)) return 0;
+        if (!root.hasHyprbars || !w?.floating || ((w.fullscreen ?? 0) !== 0) || !(Config.options?.desktopMode?.floatingWindows ?? true)) return 0;
         const cls = w.class ?? "";
         if (root.ownTitlebarClasses.indexOf(cls) !== -1) return 0;
         return root.titlebarHeight;
@@ -150,11 +151,16 @@ Singleton {
         }
     }
 
+    function updatePlugins() {
+        requestRun(getPlugins);
+    }
+
     function updateAll() {
         updateWindowList();
         updateMonitors();
         updateLayers();
         updateWorkspaces();
+        updatePlugins();
     }
 
     function biggestWindowForWorkspace(workspaceId) {
@@ -267,6 +273,22 @@ Singleton {
             id: activeWorkspaceCollector
             onStreamFinished: {
                 root.activeWorkspace = JSON.parse(activeWorkspaceCollector.text);
+            }
+        }
+    }
+
+    QueryProcess {
+        id: getPlugins
+        command: ["hyprctl", "plugin", "list", "-j"]
+        stdout: StdioCollector {
+            id: pluginsCollector
+            onStreamFinished: {
+                try {
+                    const list = JSON.parse(pluginsCollector.text);
+                    root.hasHyprbars = Array.isArray(list) && list.some(p => (p.name || "").indexOf("hyprbars") !== -1);
+                } catch(e) {
+                    root.hasHyprbars = false;
+                }
             }
         }
     }
