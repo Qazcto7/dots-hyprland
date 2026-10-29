@@ -103,15 +103,12 @@ DockButton {
             gravity: Edges.Top
             adjustment: PopupAdjustment.Slide
         }
-        implicitWidth: menuBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-        implicitHeight: menuBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+        implicitWidth: menuBackground.implicitWidth
+        implicitHeight: menuBackground.implicitHeight
 
-        StyledRectangularShadow {
-            target: menuBackground
-        }
         Rectangle {
             id: menuBackground
-            anchors.centerIn: parent
+            anchors.fill: parent
             implicitWidth: Math.max(200, menuColumn.implicitWidth + 12)
             implicitHeight: menuColumn.implicitHeight + 12
             radius: Appearance.rounding.normal

@@ -2,7 +2,6 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.modules.common.functions
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 
@@ -18,14 +17,15 @@ LazyLoader {
     component: PanelWindow {
         id: popupWindow
         color: "transparent"
+        surfaceFormat.opaque: false
 
         anchors.left: !Config.options.bar.vertical || (Config.options.bar.vertical && !Config.options.bar.bottom)
         anchors.right: Config.options.bar.vertical && Config.options.bar.bottom
         anchors.top: Config.options.bar.vertical || (!Config.options.bar.vertical && !Config.options.bar.bottom)
         anchors.bottom: !Config.options.bar.vertical && Config.options.bar.bottom
 
-        implicitWidth: popupBackground.implicitWidth + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
-        implicitHeight: popupBackground.implicitHeight + Appearance.sizes.elevationMargin * 2 + root.popupBackgroundMargin
+        implicitWidth: popupBackground.implicitWidth
+        implicitHeight: popupBackground.implicitHeight
 
         mask: Region {
             item: popupBackground
@@ -54,20 +54,10 @@ LazyLoader {
         WlrLayershell.namespace: "quickshell:popup"
         WlrLayershell.layer: WlrLayer.Overlay
 
-        StyledRectangularShadow {
-            target: popupBackground
-        }
-
         Rectangle {
             id: popupBackground
             readonly property real margin: 10
-            anchors {
-                fill: parent
-                leftMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.left)
-                rightMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.right)
-                topMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.top)
-                bottomMargin: Appearance.sizes.elevationMargin + root.popupBackgroundMargin * (!popupWindow.anchors.bottom)
-            }
+            anchors.fill: parent
             implicitWidth: root.contentItem.implicitWidth + margin * 2
             implicitHeight: root.contentItem.implicitHeight + margin * 2
             color: Appearance.m3colors.m3surfaceContainer

@@ -122,24 +122,15 @@ Item {
         visible: popupBackground.opacity > 0
         color: "transparent"
         implicitWidth: root.QsWindow.window?.width ?? 1
-        implicitHeight: popupMouseArea.implicitHeight + root.windowControlsHeight + Appearance.sizes.elevationMargin * 2
+        implicitHeight: popupMouseArea.implicitHeight + root.windowControlsHeight
 
         MouseArea {
             id: popupMouseArea
             anchors.bottom: parent.bottom
-            implicitWidth: popupBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-            implicitHeight: root.maxWindowPreviewHeight + root.windowControlsHeight + Appearance.sizes.elevationMargin * 2
+            implicitWidth: popupBackground.implicitWidth
+            implicitHeight: root.maxWindowPreviewHeight + root.windowControlsHeight
             hoverEnabled: true
             x: previewPopup.cachedCenterX - width / 2
-
-            StyledRectangularShadow {
-                target: popupBackground
-                opacity: previewPopup.show ? 1 : 0
-                visible: opacity > 0
-                Behavior on opacity {
-                    animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                }
-            }
 
             Rectangle {
                 id: popupBackground
@@ -153,7 +144,6 @@ Item {
                 color: Appearance.m3colors.m3surfaceContainer
                 radius: Appearance.rounding.normal
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: Appearance.sizes.elevationMargin
                 anchors.horizontalCenter: parent.horizontalCenter
                 implicitHeight: previewRowLayout.implicitHeight + padding * 2
                 implicitWidth: previewRowLayout.implicitWidth + padding * 2
@@ -307,20 +297,17 @@ Item {
             adjustment: PopupAdjustment.Slide
         }
 
-        implicitWidth: menuBackground.implicitWidth + Appearance.sizes.elevationMargin * 2
-        implicitHeight: menuBackground.implicitHeight + Appearance.sizes.elevationMargin * 2
+        implicitWidth: menuBackground.implicitWidth
+        implicitHeight: menuBackground.implicitHeight
 
         component MenuItem: RippleButtonWithIcon {
             Layout.fillWidth: true
             colBackground: "transparent"
         }
 
-        StyledRectangularShadow {
-            target: menuBackground
-        }
         Rectangle {
             id: menuBackground
-            anchors.centerIn: parent
+            anchors.fill: parent
             implicitWidth: Math.max(220, menuColumn.implicitWidth + 12)
             implicitHeight: menuColumn.implicitHeight + 12
             radius: Appearance.rounding.normal

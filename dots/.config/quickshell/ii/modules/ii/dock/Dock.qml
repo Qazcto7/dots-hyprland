@@ -17,6 +17,13 @@ Scope {
     id: root
     property bool pinned: Config.options?.dock.pinnedOnStartup ?? false
 
+    // Extra headroom space above the dock so magnified/bouncing icons are not clipped
+    readonly property real iconBaseSize: 35
+    readonly property real bounceHeight: 14
+    readonly property real headroom: ((Config.options?.dock.magnification ?? true)
+            ? root.iconBaseSize * Math.max(0, (Config.options?.dock.magnificationScale ?? 1.6) - 1) : 0)
+        + ((Config.options?.dock.bounceOnLaunch ?? true) ? root.bounceHeight : 0)
+
     Variants {
         model: Quickshell.screens
 
@@ -29,10 +36,8 @@ Scope {
             readonly property real dockHeight: Config.options?.dock.height ?? 60
 
             readonly property bool fullscreenActive: HyprlandData.hasFullscreenOn(dockRoot.screen?.name ?? "")
-            readonly property bool maximizedActive: (Config.options?.desktopMode.maximizeHidesBar ?? true)
-                && HyprlandData.hasMaximizedOn(dockRoot.screen?.name ?? "")
-            readonly property bool coveredActive: fullscreenActive || maximizedActive
-            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? true) || coveredActive || overlappedActive
+            readonly property bool coveredActive: fullscreenActive
+            readonly property bool hoverRevealEnabled: (Config.options?.dock.hoverToReveal ?? false) || coveredActive || overlappedActive
             WlrLayershell.layer: fullscreenActive ? WlrLayer.Overlay : WlrLayer.Top
 
             readonly property int workspaceId: HyprlandData.monitors.find(m => m.name === dockRoot.screen?.name)?.activeWorkspace?.id ?? -1
@@ -40,7 +45,7 @@ Scope {
                 w.workspace?.id === dockRoot.workspaceId && w.mapped !== false && w.hidden !== true)
 
             readonly property bool overlappedActive: {
-                if (!(Config.options?.dock.hideOverWindows ?? true)) return false;
+                if (!(Config.options?.dock.hideOverWindows ?? false)) return false;
                 if (root.pinned) return false;
                 const mon = HyprlandData.monitors.find(m => m.name === dockRoot.screen?.name);
                 if (!mon || !dockRoot.screen) return false;
@@ -71,8 +76,9 @@ Scope {
             }
 
             exclusiveZone: (root.pinned && !coveredActive) ? dockHeight + Appearance.sizes.hyprlandGapsOut : 0
+            exclusionMode: exclusiveZone > 0 ? ExclusionMode.Normal : ExclusionMode.Ignore
 
-            implicitHeight: dockHeight
+            implicitHeight: dockRoot.reveal ? (dockHeight + root.headroom) : (Config.options?.dock.hoverRegionHeight ?? 2)
             implicitWidth: dockRow.implicitWidth + dockRow.padding * 2 + 10
 
             WlrLayershell.namespace: "quickshell:dock"
@@ -93,14 +99,9 @@ Scope {
                     anchors {
                         left: parent.left
                         right: parent.right
-                        top: parent.top
-                        topMargin: dockRoot.reveal ? 0 : (dockRoot.height - (Config.options?.dock.hoverRegionHeight ?? 2))
+                        bottom: parent.bottom
                     }
                     height: dockRoot.dockHeight
-
-                    Behavior on anchors.topMargin {
-                        animation: Appearance.animation.elementMoveFast.numberAnimation.createObject(this)
-                    }
 
                     color: ColorUtils.transparentize(Appearance.colors.colLayer0, 1 - (Config.options?.dock.backgroundOpacity ?? 0.72))
                     border.width: 1

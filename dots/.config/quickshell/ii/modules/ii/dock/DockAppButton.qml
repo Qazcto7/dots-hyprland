@@ -34,14 +34,12 @@ DockButton {
     property real magnify: 1
 
     Behavior on magnify {
-        enabled: !appListRoot?.hovering
         NumberAnimation {
-            duration: 90
+            duration: 110
             easing.type: Easing.OutCubic
         }
     }
-    // Fixed base width to keep the Wayland layer surface width stable and prevent stutter/lag
-    implicitWidth: isSeparator ? 1 : baseWidth
+    implicitWidth: isSeparator ? 1 : baseWidth * magnify
 
     // Imperative update (not a binding) so our own width change can't cause a binding loop
     function updateMagnify() {

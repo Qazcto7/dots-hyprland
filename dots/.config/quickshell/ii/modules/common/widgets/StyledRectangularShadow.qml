@@ -1,14 +1,13 @@
 import QtQuick
-import QtQuick.Effects
-import qs.modules.common
 
-RectangularShadow {
-    required property var target
-    anchors.fill: target
-    radius: target.radius
-    blur: 0.9 * Appearance.sizes.elevationMargin
-    offset: Qt.vector2d(0.0, 1.0)
-    spread: 1
-    color: Appearance.colors.colShadow
-    cached: true
+Item {
+    id: root
+    property var target
+    property real radius: target?.radius ?? 0
+    property real blur: 0
+    property real spread: 0
+    property var offset: Qt.vector2d(0, 0)
+    property color color: "transparent"
+    property bool cached: false
+    visible: false
 }

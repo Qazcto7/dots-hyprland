@@ -196,7 +196,9 @@ Singleton {
         target: Hyprland
 
         function onRawEvent(event) {
-            // console.log("Hyprland raw event:", event.name);
+            if (GlobalStates.superDown) {
+                GlobalStates.superReleaseMightTrigger = false;
+            }
             if (root.ignoredEvents.includes(event.name)) return;
             const delay = root.slowEvents.includes(event.name) ? 400 : 40;
             // A pending fast refresh is never pushed back, and a slow one is brought forward
