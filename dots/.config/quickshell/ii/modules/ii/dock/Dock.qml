@@ -17,12 +17,10 @@ Scope { // Scope
     id: root
     property bool pinned: Config.options?.dock.pinnedOnStartup ?? false
 
-    // Extra transparent space above the dock so magnified/bouncing icons are not clipped
+    // Transparent space above the dock (set to 0 so dock layer stays within reserved zone)
     readonly property real iconBaseSize: 35
     readonly property real bounceHeight: 14
-    readonly property real headroom: ((Config.options?.dock.magnification ?? true)
-            ? root.iconBaseSize * Math.max(0, (Config.options?.dock.magnificationScale ?? 1.6) - 1) : 0)
-        + ((Config.options?.dock.bounceOnLaunch ?? true) ? root.bounceHeight : 0)
+    readonly property real headroom: 0
 
     Variants {
         // For each monitor
@@ -60,15 +58,16 @@ Scope { // Scope
             // for windows that really reach into it.
             readonly property bool overlappedActive: {
                 if (!(Config.options?.dock.hideOverWindows ?? true)) return false;
+                if (root.pinned) return false;
                 const mon = HyprlandData.monitors.find(m => m.name === dockRoot.screen?.name);
                 if (!mon || !dockRoot.screen) return false;
                 const ids = [mon.activeWorkspace?.id, mon.specialWorkspace?.id].filter(id => id !== undefined && id !== 0);
                 // Where the dock body is when shown (global coordinates)
                 const bodyWidth = dockBackground.implicitWidth;
-                const left = mon.x + (dockRoot.width - bodyWidth) / 2;
+                const left = mon.x + (dockRoot.screen.width - bodyWidth) / 2;
                 const right = left + bodyWidth;
                 const bottom = mon.y + dockRoot.screen.height;
-                const top = bottom - dockRoot.implicitHeight + root.headroom + Appearance.sizes.elevationMargin;
+                const top = bottom - (Config.options?.dock.height ?? 60) - Appearance.sizes.hyprlandGapsOut;
                 return HyprlandData.windowList.some(w => {
                     if (ids.indexOf(w.workspace?.id) === -1 || w.hidden || w.mapped === false) return false;
                     if (((w.fullscreen ?? 0) & 2) !== 0) return false; // fullscreen is handled separately
@@ -78,21 +77,20 @@ Scope { // Scope
                 });
             }
 
-            property bool reveal: (coveredActive || overlappedActive)
+            property bool reveal: coveredActive
                 ? (dockMouseArea.containsMouse || dockApps.requestDockShow || dockTrash.menuOpen)
-                : (root.pinned || (Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || dockRoot.emptyWorkspace)
+                : (root.pinned || (overlappedActive ? (dockMouseArea.containsMouse || dockApps.requestDockShow || dockTrash.menuOpen) : ((Config.options?.dock.hoverToReveal && dockMouseArea.containsMouse) || dockApps.requestDockShow || dockTrash.menuOpen || dockRoot.emptyWorkspace)))
 
             anchors {
                 bottom: true
-                left: true
-                right: true
             }
 
-            exclusiveZone: (root.pinned && !coveredActive) ? implicitHeight - root.headroom - (Appearance.sizes.hyprlandGapsOut) - (Appearance.sizes.elevationMargin - Appearance.sizes.hyprlandGapsOut) : 0
+            exclusiveZone: (root.pinned && !coveredActive) ? (Config.options?.dock.height ?? 60) + Appearance.sizes.hyprlandGapsOut : 0
 
             implicitWidth: dockBackground.implicitWidth
             WlrLayershell.namespace: "quickshell:dock"
             color: "transparent"
+            surfaceFormat.opaque: false
 
             implicitHeight: (Config.options?.dock.height ?? 70) + Appearance.sizes.elevationMargin + Appearance.sizes.hyprlandGapsOut + root.headroom
 

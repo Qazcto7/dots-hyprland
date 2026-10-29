@@ -82,12 +82,13 @@ Singleton {
         const rotated = ((mon.transform ?? 0) % 2) === 1;
         const scale = mon.scale || 1;
         const width = (rotated ? mon.height : mon.width) / scale;
+        const height = (rotated ? mon.width : mon.height) / scale;
         return root.windowList.some(w => {
             if (workspaceIds.indexOf(w.workspace?.id) === -1 || w.hidden || w.mapped === false) return false;
             const fs = w.fullscreen ?? 0;
             if ((fs & 2) !== 0) return false; // fullscreen is handled separately
             if ((fs & 1) !== 0) return true;
-            return w.floating && (w.size?.[0] ?? 0) >= width * 0.9 && ((w.at?.[1] ?? 9999) - mon.y) <= 50;
+            return w.floating && (w.size?.[0] ?? 0) >= width * 0.9 && ((w.at?.[1] ?? 9999) - mon.y) <= 50 && (((w.at?.[1] ?? 0) - mon.y) + (w.size?.[1] ?? 0)) >= (height - 30);
         });
     }
 
