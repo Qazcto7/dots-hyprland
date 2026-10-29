@@ -76,7 +76,7 @@ Scope {
                 exclusiveZone: (barRoot.configuredAutoHide && (!mustShow || !Config?.options.bar.autoHide.pushWindows || barRoot.coveredActive)) ? 0 :
                     barRoot.reservedHeight
                 WlrLayershell.namespace: "quickshell:bar"
-                implicitHeight: Appearance.sizes.barHeight + Appearance.rounding.screenRounding
+                implicitHeight: Appearance.sizes.barHeight + (roundDecorators.active ? Appearance.rounding.screenRounding : 0)
                 mask: Region {
                     item: hoverMaskRegion
                 }
