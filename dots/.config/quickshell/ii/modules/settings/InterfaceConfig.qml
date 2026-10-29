@@ -175,14 +175,14 @@ ContentPage {
                 }
             }
             ConfigSwitch {
-                buttonIcon: "mouse"
-                text: Translation.tr("Focus follows mouse")
-                checked: Config.options.desktopMode.hoverFocus
+                buttonIcon: "left_click"
+                text: Translation.tr("Click to focus")
+                checked: Config.options.desktopMode.clickToFocus
                 onCheckedChanged: {
-                    Config.options.desktopMode.hoverFocus = checked;
+                    Config.options.desktopMode.clickToFocus = checked;
                 }
                 StyledToolTip {
-                    text: Translation.tr("The keyboard goes to the window under the mouse. A window that just opened keeps the focus until the mouse crosses a window border. Off: the keyboard goes to the window you click")
+                    text: Translation.tr("The keyboard goes to the window you click, not to the window under the mouse")
                 }
             }
             ConfigSwitch {

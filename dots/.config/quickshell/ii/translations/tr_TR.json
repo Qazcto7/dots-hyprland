@@ -732,8 +732,8 @@
   "Trash is empty": "Çöp boş",
   "Trash in the dock": "Dock'ta çöp kutusu",
   "Minimized": "Küçültüldü",
-  "Focus follows mouse": "Odak fareyi takip etsin",
-  "The keyboard goes to the window under the mouse. A window that just opened keeps the focus until the mouse crosses a window border. Off: the keyboard goes to the window you click": "Klavye farenin altındaki pencereye gider. Yeni açılan pencere, fare bir pencere sınırını geçene kadar odağı korur. Kapalıyken klavye tıkladığın pencereye gider",
+  "Click to focus": "Tıklayınca odaklan",
+  "The keyboard goes to the window you click, not to the window under the mouse": "Klavye farenin altındaki pencereye değil, tıkladığın pencereye gider",
   "Hide when a window overlaps the dock": "Bir pencere dock'un üstüne gelince gizle",
   "Hide when a window overlaps the bar": "Bir pencere barın üstüne gelince gizle",
   "A maximized window takes the whole screen; the top bar and the dock hide and appear at the screen edges": "Büyütülen pencere tüm ekranı kaplar; üst bar ve dock gizlenir, ekran kenarlarında görünür"
